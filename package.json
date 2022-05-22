@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.ts",
-    "start": "node index.ts",
+    "start": "ts-node test.ts",
     "lint": "eslint --fix .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,6 +19,7 @@
   "dependencies": {
     "@apollo/client": "^3.6.4",
     "@types/http-server": "^0.12.1",
+    "cross-fetch": "^3.1.5",
     "discord.js": "^13.3.1",
     "dotenv": "^10.0.0",
     "graphql": "^16.5.0",
