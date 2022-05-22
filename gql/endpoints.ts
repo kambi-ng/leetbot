@@ -12,15 +12,9 @@ export function fetchDaily() {
             question {
               acRate
               difficulty
-              freqBar
-              frontendQuestionId: questionFrontendId
-              isFavor
-              paidOnly: isPaidOnly
-              status
+              frontendQuestionId
               title
               titleSlug
-              hasVideoSolution
-              hasSolution
               content
               topicTags {
                 name
@@ -43,15 +37,9 @@ export function fetchRandom() {
           randomQuestion(categorySlug: $categorySlug, filters: $filters) {
             acRate
             difficulty
-            freqBar
-            frontendQuestionId: questionFrontendId
-            isFavor
-            paidOnly: isPaidOnly
-            status
+            frontendQuestionId
             title
             titleSlug
-            hasVideoSolution
-            hasSolution
             content
             topicTags {
               name
