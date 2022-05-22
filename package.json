@@ -1,0 +1,32 @@
+{
+  "name": "leetbot",
+  "version": "1.0.0",
+  "description": "leetcode discord bot",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.ts",
+    "start": "node index.ts",
+    "lint": "eslint --fix .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Dennis A. Walangadi (dennis.walangadi@gmail.com)",
+  "license": "MIT",
+  "engines": {
+    "node": "v16.10.0",
+    "npm": "7.24.0"
+  },
+  "dependencies": {
+    "@types/http-server": "^0.12.1",
+    "discord.js": "^13.3.1",
+    "dotenv": "^10.0.0",
+    "ts-node": "^10.4.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "eslint": "^8.2.0",
+    "nodemon": "^2.0.15",
+    "typescript": "^4.5.2"
+  }
+}
