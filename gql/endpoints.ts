@@ -2,7 +2,7 @@ import { gql } from "@apollo/client/core";
 import { client } from "./client";
 
 export function fetchDaily() {
-  client
+  return client
     .query({
       query: gql`
         query questionOfToday {
@@ -24,13 +24,12 @@ export function fetchDaily() {
             }
           }
         }
-        `
-    })
-    .then(result => console.log(result.data));
+      `
+    });
 }
 
 export function fetchRandom() {
-  client
+  return client
     .query({
       query: gql`
         query randomQuestion($categorySlug: String, $filters: QuestionListFilterInput) {
@@ -53,6 +52,5 @@ export function fetchRandom() {
         "categorySlug": "",
         "filters": {}
       }
-    })
-    .then(result => console.log(result));
+    });
 }

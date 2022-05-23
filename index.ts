@@ -1,11 +1,10 @@
 import { Client, ClientEvents, Intents } from "discord.js";
-import server from "./server";
-import cmd from "./command";
 import dotenv from "dotenv";
-import PrismaClient from "./prisma/client";
+import cmd from "./command";
+import server from "./server";
 dotenv.config();
 
-const client = new Client({
+export const client = new Client({
   intents: [
     Intents.FLAGS.GUILDS,
     Intents.FLAGS.GUILD_MESSAGES,
@@ -53,5 +52,4 @@ async function main() {
 }
 
 main()
-  .catch(e => console.error(e))
-  .finally(async () => { await PrismaClient.$disconnect(); });
+  .catch(e => console.error(e));

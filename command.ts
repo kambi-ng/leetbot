@@ -7,13 +7,13 @@ import { Meta } from "./command/interfaces";
 function isMessage(eventObj: Message | ClientEvents): eventObj is Message {
   const premise = eventObj as Message;
   return premise.member !== undefined &&
-        premise.tts !== undefined;
+    premise.tts !== undefined;
 }
 
 function isReact(eventObj: MessageReaction | ClientEvents): eventObj is MessageReaction {
   const premise = eventObj as MessageReaction;
   return premise.message !== undefined &&
-        premise.emoji != undefined;
+    premise.emoji != undefined;
 }
 
 function isThread(eventObj: ThreadChannel | ClientEvents): eventObj is ThreadChannel {
