@@ -13,10 +13,20 @@ interface TopicTag {
   [key: string]: string;
 }
 
+export interface QuestionOfToday {
+  activeDailyCodingChallengeQuestion: ActiveDailyCodingChallengeQuestion
+}
+
+export interface ActiveDailyCodingChallengeQuestion {
+  date: string;
+  link: string;
+  question: Question;
+}
+
 export interface Question {
   acRate: number,
   difficulty: string,
-  frontendQuestionId: number,
+  questionId: number,
   title: string,
   titleSlug: string,
   content: string,

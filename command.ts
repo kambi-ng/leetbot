@@ -1,4 +1,4 @@
-import { ClientEvents, Message, MessageReaction, Permissions, ThreadChannel } from "discord.js";
+import { ClientEvents, Message, MessageReaction, Permissions, ThreadChannel, TextChannel } from "discord.js";
 import messageRepo from "./command/messageRepo";
 import reactionRepo from "./command/reactionRepo";
 import threadRepo from "./command/threadRepo";
@@ -28,7 +28,7 @@ function handleEvents(type: string, eventObject: ClientEvents) {
     fromGuild: false,
   };
 
-  console.log(eventObject);
+  // console.log(eventObject);
 
   // messageCommand
   if (isMessage(eventObject)) {
@@ -42,7 +42,10 @@ function handleEvents(type: string, eventObject: ClientEvents) {
     const content = message.content.trim().split(/\s+/);
     META.commandArgs = content.slice(1);
     META.command = content[0];
+    if (eventObject.channel instanceof TextChannel){
+      META.channel = eventObject.channel
 
+    }
     return messageRepo.delegate(META, message);
   }
 

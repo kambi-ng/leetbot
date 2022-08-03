@@ -1,24 +1,29 @@
 import { Message } from "discord.js";
 import { Meta } from "./interfaces";
 import { configureServer } from "./serverConfig";
-
+import sendToday from "./daily-question/index"
 function delegate(META: Meta, message: Message) {
 
   // TODO: handle prefix change
 
   switch (META.command) {
-    case "/ping":
+    case "!!ping":
       message.reply("PONG");
       break;
-    case "/help":
+    case "!!help":
       sendHelp(message);
       break;
-    case "/config":
+    case "!!config":
       if (!META.isMod || !META.fromGuild || !META.commandArgs) return;
       configureServer(META, message);
       break;
+    case "!!today":
+      if (META.channel){
+        sendToday(META.channel);
+      }
+      break;
     default:
-      message.reply("Sorry, I don't quite understand. Do you need `/help`?");
+      // message.reply("Sorry, I don't quite understand. Do you need `/help`?");
       break;
   }
   return;
@@ -30,15 +35,15 @@ function sendHelp(message: Message) {
 
 Here are available Server commands:
 
-    /ping
+    !!ping
         Test the server reponse
 
-    /help
+    !!help
         Display this message
 
-    /config <args>
+    !!config <args>
         Configure this server, only serevr member with MANAGE_CHANNEL permission
-        can use this command. Use \`/config help\` to show available commands.
+        can use this command. Use \`!!config help\` to show available commands.
 `;
 
   message.channel.send(helpContent);

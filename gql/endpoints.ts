@@ -1,9 +1,10 @@
 import { gql } from "@apollo/client/core";
-import { client } from "./client";
+import { client, type QuestionOfToday } from "./client";
+
 
 export function fetchDaily() {
   return client
-    .query({
+    .query<QuestionOfToday>({
       query: gql`
         query questionOfToday {
           activeDailyCodingChallengeQuestion {
@@ -12,7 +13,7 @@ export function fetchDaily() {
             question {
               acRate
               difficulty
-              frontendQuestionId
+              questionId
               title
               titleSlug
               content
@@ -36,7 +37,7 @@ export function fetchRandom() {
           randomQuestion(categorySlug: $categorySlug, filters: $filters) {
             acRate
             difficulty
-            frontendQuestionId
+            questionId
             title
             titleSlug
             content

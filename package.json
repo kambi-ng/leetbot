@@ -17,19 +17,19 @@
     "npm": "7.24.0"
   },
   "dependencies": {
-    "@apollo/client": "^3.6.4",
+    "@apollo/client": "^3.6.9",
     "@types/http-server": "^0.12.1",
     "cross-fetch": "^3.1.5",
-    "discord.js": "^13.3.1",
+    "discord.js": "^13.9.2",
     "dotenv": "^10.0.0",
     "graphql": "^16.5.0",
-    "ts-node": "^10.4.0"
+    "ts-node": "^10.9.1"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.4.0",
-    "@typescript-eslint/parser": "^5.4.0",
-    "eslint": "^8.2.0",
-    "nodemon": "^2.0.15",
-    "typescript": "^4.5.2"
+    "@typescript-eslint/eslint-plugin": "^5.32.0",
+    "@typescript-eslint/parser": "^5.32.0",
+    "eslint": "^8.21.0",
+    "nodemon": "^2.0.19",
+    "typescript": "^4.7.4"
   }
 }
