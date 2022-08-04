@@ -15,6 +15,8 @@ export function fetchDaily() {
               difficulty
               questionId
               title
+              likes
+              dislikes
               titleSlug
               content
               topicTags {

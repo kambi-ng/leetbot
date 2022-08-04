@@ -1,4 +1,5 @@
-import { Client, ClientEvents, Intents } from "discord.js";
+import { Client, ClientEvents, GatewayIntentBits, Partials } from "discord.js";
+import { ReacordDiscordJs } from "reacord"
 import dotenv from "dotenv";
 import cmd from "./command";
 import server from "./server";
@@ -6,19 +7,21 @@ dotenv.config();
 
 export const client = new Client({
   intents: [
-    Intents.FLAGS.GUILDS,
-    Intents.FLAGS.GUILD_MESSAGES,
-    Intents.FLAGS.GUILD_EMOJIS_AND_STICKERS,
-    Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-    Intents.FLAGS.DIRECT_MESSAGES,
-    Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildEmojisAndStickers,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.MessageContent,
   ],
   partials: [
-    "MESSAGE",
-    "CHANNEL",
-    "REACTION"
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction,
   ]
 });
+const reacord = new ReacordDiscordJs(client)
 
 
 async function main() {
@@ -32,7 +35,7 @@ async function main() {
   for (const event of events) {
     client.on(
       event,
-      (eventObject: ClientEvents) => cmd.handleEvents(event, eventObject)
+      (eventObject: ClientEvents) => cmd.handleEvents(reacord, event, eventObject)
     );
   }
 

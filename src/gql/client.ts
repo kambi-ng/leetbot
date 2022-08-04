@@ -28,6 +28,8 @@ export interface Question {
   difficulty: string,
   questionId: number,
   title: string,
+  likes: number,
+  dislikes: number,
   titleSlug: string,
   content: string,
   topicTags: [

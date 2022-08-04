@@ -1,4 +1,5 @@
-import { ClientEvents, Message, MessageReaction, Permissions, ThreadChannel, TextChannel } from "discord.js";
+import { ClientEvents, Message, MessageReaction, ThreadChannel, TextChannel } from "discord.js";
+import { ReacordDiscordJs } from "reacord"
 import messageRepo from "./command/messageRepo";
 import reactionRepo from "./command/reactionRepo";
 import threadRepo from "./command/threadRepo";
@@ -21,11 +22,11 @@ function isThread(eventObj: ThreadChannel | ClientEvents): eventObj is ThreadCha
   return premise.autoArchiveDuration != undefined;
 }
 
-function handleEvents(type: string, eventObject: ClientEvents) {
-
+function handleEvents(reacord: ReacordDiscordJs, type: string, eventObject: ClientEvents) {
   const META: Meta = {
     isMod: false,
     fromGuild: false,
+    reacord: reacord
   };
 
   // console.log(eventObject);
@@ -38,11 +39,11 @@ function handleEvents(type: string, eventObject: ClientEvents) {
     if (message.author.bot || message.author.id === message.client.user?.id) return;
 
     META.fromGuild = message.guildId !== null;
-    META.isMod = message.member?.permissions.has(Permissions.FLAGS.MANAGE_CHANNELS);
+    META.isMod = message.member?.permissions.has("Administrator");
     const content = message.content.trim().split(/\s+/);
     META.commandArgs = content.slice(1);
     META.command = content[0];
-    if (eventObject.channel instanceof TextChannel){
+    if (eventObject.channel instanceof TextChannel) {
       META.channel = eventObject.channel
 
     }

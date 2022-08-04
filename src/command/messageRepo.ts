@@ -19,10 +19,11 @@ function delegate(META: Meta, message: Message) {
       break;
     case "!!today":
       if (META.channel){
-        sendToday(META.channel);
+        sendToday(META.channel, META.reacord)
       }
       break;
     default:
+    console.log("Unknown command: ", META.command);
       // message.reply("Sorry, I don't quite understand. Do you need `/help`?");
       break;
   }
