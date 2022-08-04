@@ -11,9 +11,6 @@ export interface TopicTag {
   [key: string]: string;
 }
 
-export interface QuestionOfToday {
-  activeDailyCodingChallengeQuestion: ActiveDailyCodingChallengeQuestion
-}
 
 export interface ActiveDailyCodingChallengeQuestion {
   date: string;
@@ -33,6 +30,10 @@ export interface Question {
   topicTags: [
     TopicTag
   ]
+}
+
+export interface QuestionOfToday {
+  activeDailyCodingChallengeQuestion: ActiveDailyCodingChallengeQuestion
 }
 
 export function fetchDaily() {
@@ -64,9 +65,21 @@ export function fetchDaily() {
     });
 }
 
-export function fetchRandom() {
+interface RandomQuestionProps {
+  categorySlug: string
+  filters: {
+    difficulty: "EASY" | "MEDIUM" | "HARD"
+    [key: string]: string
+  }
+}
+
+interface RandomQuestion {
+  randomQuestion: Question
+}
+
+export function fetchRandom(variables: RandomQuestionProps) {
   return client
-    .query({
+    .query<RandomQuestion>({
       query: gql`
         query randomQuestion($categorySlug: String, $filters: QuestionListFilterInput) {
           randomQuestion(categorySlug: $categorySlug, filters: $filters) {
@@ -74,6 +87,8 @@ export function fetchRandom() {
             difficulty
             questionId
             title
+            likes
+            dislikes
             titleSlug
             content
             topicTags {
@@ -84,9 +99,6 @@ export function fetchRandom() {
           }
         }
       `,
-      variables: {
-        "categorySlug": "",
-        "filters": {}
-      }
+      variables
     });
 }

@@ -3,7 +3,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "dis
 import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily } from "./gql";
+import { fetchDaily, Question } from "./gql";
 import { convert } from "html-to-text"
 
 type Command = {
@@ -76,42 +76,30 @@ export const commands: Command[] = [
   }
 ]
 
-async function sendToday() {
+async function sendToday(question: Question) {
   const colors: { [key: string]: ColorResolvable; } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
+  const embed = new EmbedBuilder()
+    .setTitle(question.title)
+    .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
+    .setDescription(convert(question.content).replace(/\n\s+/g, '\n\n'))
+    .setColor(colors[question.difficulty])
+    .setTimestamp(Date.now())
+    .setFields([
+      { name: "Difficulty", value: question.difficulty, inline: true },
+      { name: "Tags", value: question.topicTags.map(t => t.name).join(', '), inline: true },
+      { name: "Acceptance", value: String(Math.round(question.acRate * 100) / 100) + "%", inline: true },
+      { name: "Likes", value: String(question.likes), inline: true },
+      { name: "Dislikes", value: String(question.dislikes), inline: true },
+    ]);
 
-  try {
-    const data = (await fetchDaily()).data.activeDailyCodingChallengeQuestion;
+  const row = new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(new ButtonBuilder()
+      .setLabel("View")
+      .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
+      .setStyle(ButtonStyle.Link)
+    );
 
-    const embed = new EmbedBuilder()
-      .setTitle(data.question.title)
-      .setURL(`https://leetcode.com${data.link}`)
-      .setDescription(convert(data.question.content).replace(/\n\s+/g, '\n\n'))
-      .setColor(colors[data.question.difficulty])
-      .setTimestamp(Date.now())
-      .setFields([
-        { name: "Difficulty", value: data.question.difficulty, inline: true },
-        { name: "Tags", value: data.question.topicTags.map(t => t.name).join(', '), inline: true },
-        { name: "Acceptance", value: String(Math.round(data.question.acRate * 100) / 100) + "%", inline: true },
-        { name: "Likes", value: String(data.question.likes), inline: true },
-        { name: "Dislikes", value: String(data.question.dislikes), inline: true },
-      ]);
-
-    const row = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(new ButtonBuilder()
-        .setLabel("View")
-        .setURL(`https://leetcode.com${data.link}`)
-        .setStyle(ButtonStyle.Link)
-      );
-
-    return { embeds: [embed], components: [row] };
-
-  } catch (e) {
-    console.error(e);
-    if (e instanceof Error) {
-      return { content: e.message };
-    }
-    return { content: "Something went wrong" };
-  }
+  return { embeds: [embed], components: [row] };
 }
 
 async function sendConfigureServer() {
