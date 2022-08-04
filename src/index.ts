@@ -35,6 +35,7 @@ async function main() {
 
     if (command) {
       await command.runMessage({ interaction, client })
+      return
     }
 
     interaction.reply("Sorry, I don't quite understand. Do you need `l!help` or `/help`?")

@@ -60,20 +60,19 @@ export const commands: Command[] = [
     name: "config",
     description: "Configure leetbot",
     runSlash: async ({ interaction }) => {
-      await interaction.reply(await sendConfigureServer());
+      if (!interaction.memberPermissions?.has("ManageChannels")) {
+        await interaction.reply(await sendConfigureServer());
+        return;
+      }
+      await interaction.reply("You do not have permission to use this command.");
     },
     runMessage: async ({ interaction }) => {
-      if (!interaction.member?.permissions.has("Administrator")) {
+      if (!interaction.member?.permissions.has("ManageChannels")) {
         interaction.reply("You do not have permission to use this command.");
         return;
       }
       await interaction.reply(await sendConfigureServer());
     },
-    // options: [
-    //   {
-    //     type: ApplicationCommandOptionData,
-    //   }
-    // ]
   }
 ]
 
