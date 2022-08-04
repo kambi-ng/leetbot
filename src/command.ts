@@ -1,6 +1,6 @@
 import { Message, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, CacheType, MessageOptions, ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js";
 import type { ColorResolvable } from "discord.js";
-import { fetchDaily } from "./gql/endpoints";
+import { fetchDaily } from "./gql";
 import { convert } from "html-to-text"
 
 
