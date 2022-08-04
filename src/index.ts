@@ -1,7 +1,6 @@
 import { Client, ClientEvents, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
 import cmd from "./command";
-import server from "./server";
 dotenv.config();
 
 export const client = new Client({
@@ -22,19 +21,18 @@ export const client = new Client({
 });
 
 async function main() {
-
-  const events: string[] = [
+  const eventTypes = [
     "messageCreate",
     "threadCreate",
     "messageReactionAdd",
   ];
 
-  for (const event of events) {
+  eventTypes.map(type => {
     client.on(
-      event,
-      (eventObject: ClientEvents) => cmd.handleEvents(event, eventObject)
+      type,
+      (event: ClientEvents) => cmd.handleEvents(type, event)
     );
-  }
+  })
 
   client.on("ready", (client: Client) => {
     const user = client.user;
@@ -50,5 +48,4 @@ async function main() {
   client.login(process.env.DC_TOKEN);
 }
 
-main()
-  .catch(e => console.error(e));
+main().catch(e => console.error(e));

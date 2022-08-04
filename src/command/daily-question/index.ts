@@ -1,5 +1,5 @@
-import { fetchDaily } from "../../gql/endpoints";
 import { TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { fetchDaily } from "../../gql/endpoints";
 import type { ColorResolvable } from "discord.js";
 import { convert } from "html-to-text"
 
