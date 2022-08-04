@@ -48,7 +48,6 @@ async function main() {
   });
 
   client.login(process.env.DC_TOKEN);
-  server.startServer();
 }
 
 main()
