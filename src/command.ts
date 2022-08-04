@@ -21,51 +21,39 @@ function isThread(eventObj: ThreadChannel | ClientEvents): eventObj is ThreadCha
 }
 
 function handleEvents(type: string, event: ClientEvents) {
+  console.log("type", { "message": event instanceof Message, "react": event instanceof MessageReaction, "thread": event instanceof ThreadChannel });
   if (isMessage(event)) {
+    if (!event.content.startsWith("l!") || event.author.bot || event.author.id === event.client.user?.id) return
 
-    // abort if it's invoked by bots
-    if (event.author.bot || event.author.id === event.client.user?.id) return;
-    const [command, ...args] = event.content.trim().split(/\s+/);
-
+    const [command, ...args] = event.content.trim().slice(2).split(/\s+/);
+    console.log("command", command, args);
     switch (command) {
-      case "!!ping":
+      case "ping":
         event.reply("PONG");
         break;
-      case "!!help":
-        // sendHelp(message);
+      case "help":
+        if (event.channel instanceof TextChannel) {
+          sendHelp(event.channel)
+        }
         break;
-      case "!!config":
-        if (!event.member?.permissionsIn("ADMINISTRATOR")) return
-        // configureServer(event, message);
+      case "config":
+        if (!event.member?.permissions.has("Administrator")) {
+          event.reply("You do not have permission to use this command.");
+          return;
+        }
+        configureServer(event, args);
         break;
-      case "!!today":
+      case "today":
         if (event.channel instanceof TextChannel) {
           sendToday(event.channel)
         }
         break;
       default:
         console.log("Unknown command: ", command);
-        // message.reply("Sorry, I don't quite understand. Do you need `/help`?");
+        event.reply("Sorry, I don't quite understand. Do you need `/help`?");
         break;
     }
   }
-
-  // // reactCommand
-  // else if (isReact(eventObject)) {
-  //   const react = eventObject as MessageReaction;
-  //
-  //   // abort if it's invoked by the bot itself
-  //   if (react.me) return;
-  //
-  //   return reactionRepo.delegate(META, react);
-  // }
-  //
-  // // threadCommand
-  // else if (isThread(eventObject)) {
-  //   const thread = eventObject as ThreadChannel;
-  //
-  //   return threadRepo.delegate(META, thread);
-  // }
 }
 
 async function sendToday(channel: TextChannel) {
@@ -103,6 +91,27 @@ async function sendToday(channel: TextChannel) {
     }
   }
 }
+
+async function configureServer(event: ClientEvents & Message<boolean>, args: string[]) {
+  event.channel.send("This feature is not supported yet.");
+}
+
+async function sendHelp(channel: TextChannel) {
+  const helpContent = `
+***LEETBOT***
+Here are available Server commands:
+l!ping
+  Test the server reponse
+l!help
+  Display this message
+l!config <args>
+  Configure this server, only serevr member with MANAGE_CHANNEL permission
+  can use this command. Use \`!!config help\` to show available commands.
+`;
+
+  await channel.send(helpContent);
+}
+
 export default {
   handleEvents
 };
