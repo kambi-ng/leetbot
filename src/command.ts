@@ -6,7 +6,17 @@ import type { ColorResolvable } from "discord.js";
 import { fetchDaily, Question } from "./gql";
 import { convert } from "html-to-text"
 
-type Command = {
+
+export type Command = RunCombined | RunSeparate;
+
+export type RunCombined = {
+  name: string
+  description: string
+  options?: ApplicationCommandOptionData[]
+  run: (context: CommandContext | MessageContext) => void | Promise<unknown>
+}
+
+export type RunSeparate = {
   name: string
   description: string
   options?: ApplicationCommandOptionData[]
@@ -14,12 +24,12 @@ type Command = {
   runMessage: (context: MessageContext) => void | Promise<unknown>
 }
 
-type CommandContext = {
+export type CommandContext = {
   interaction: ChatInputCommandInteraction<CacheType>
   client: Client
 }
 
-type MessageContext = {
+export type MessageContext = {
   interaction: Message<boolean>
   client: Client
   args?: string[]
@@ -29,30 +39,32 @@ export const commands: Command[] = [
   {
     name: "ping",
     description: "Test the server reponse",
-    runSlash: async ({ interaction }) => {
-      await interaction.reply("Pong!");
-    },
-    runMessage: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       await interaction.reply("Pong!");
     }
   },
   {
     name: "today",
     description: "Get today's daily leetcode problem",
-    runSlash: async ({ interaction }) => {
-      await interaction.reply(await sendToday());
-    },
-    runMessage: async ({ interaction }) => {
-      await interaction.reply(await sendToday());
+    run: async ({ interaction }) => {
+      let question: Question
+      try {
+        const daily = await fetchDaily()
+        question = daily.data.activeDailyCodingChallengeQuestion.question
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return { content: e.message };
+        }
+        return { content: "Something went wrong" };
+      }
+      await interaction.reply(await sendToday(question));
     }
   },
   {
     name: "help",
     description: "Information on how to use leetbot",
-    runSlash: async ({ interaction }) => {
-      await interaction.reply(sendHelp());
-    },
-    runMessage: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       await interaction.reply(sendHelp());
     }
   },

@@ -1,6 +1,7 @@
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
 import { commands } from "./command";
+import type { RunCombined, RunSeparate } from "./command";
 dotenv.config();
 
 export const client = new Client({
@@ -33,21 +34,26 @@ async function main() {
     const [commandName, ...args] = interaction.content.trim().slice(2).split(/\s+/);
     const command = commands.find(c => c.name === commandName)
 
-    if (command) {
-      await command.runMessage({ interaction, client })
-      return
+    if (!command) {
+      interaction.reply("Sorry, I don't quite understand. Do you need `l!help` or `/help`?")
     }
 
-    interaction.reply("Sorry, I don't quite understand. Do you need `l!help` or `/help`?")
+    if ("run" in command!) {
+      await command.run({ interaction, client })
+    } else {
+      await command?.runMessage({ interaction, client })
+    }
 
   })
 
   client.on("interactionCreate", async (interaction) => {
     if (interaction instanceof ChatInputCommandInteraction<CacheType>) {
-      const command = commands.find(c => c.name === interaction.commandName)
+      const command = commands.find(c => c.name === interaction.commandName)!
 
-      if (command) {
-        await command.runSlash({ interaction, client })
+      if ("run" in command!) {
+        await command.run({ interaction, client })
+      } else {
+        await command?.runSlash({ interaction, client })
       }
     }
   })
