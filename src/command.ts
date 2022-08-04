@@ -1,5 +1,4 @@
 import { ClientEvents, Message, MessageReaction, ThreadChannel, TextChannel } from "discord.js";
-import { ReacordDiscordJs } from "reacord"
 import messageRepo from "./command/messageRepo";
 import reactionRepo from "./command/reactionRepo";
 import threadRepo from "./command/threadRepo";
@@ -22,11 +21,10 @@ function isThread(eventObj: ThreadChannel | ClientEvents): eventObj is ThreadCha
   return premise.autoArchiveDuration != undefined;
 }
 
-function handleEvents(reacord: ReacordDiscordJs, type: string, eventObject: ClientEvents) {
+function handleEvents( type: string, eventObject: ClientEvents) {
   const META: Meta = {
     isMod: false,
     fromGuild: false,
-    reacord: reacord
   };
 
   // console.log(eventObject);

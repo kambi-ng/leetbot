@@ -4,12 +4,10 @@
   "description": "leetcode discord bot",
   "main": "index.js",
   "scripts": {
-    "prepare": "npm run build",
-    "dev": "run-p --print-label --race dev:*",
-    "dev:nodemon": "nodemon dist/index.js",
-    "dev:build": "npm run build -- --watch",
-    "build": "tsup src/index.tsx --target node16",
-    "start": "cross-env NODE_ENV=production node dist/index.js"
+    "dev": "nodemon src/index.ts",
+    "start": "ts-node src/test.ts",
+    "lint": "eslint --fix .",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "Dennis A. Walangadi (dennis.walangadi@gmail.com)",
@@ -26,19 +24,13 @@
     "dotenv": "^10.0.0",
     "graphql": "^16.5.0",
     "html-to-text": "^8.2.1",
-    "reacord": "^0.5.0",
-    "react": "^18.2.0",
-    "ts-node": "^10.9.1",
-    "tsup": "^6.2.1",
-    "tsx": "^3.8.0"
+    "ts-node": "^10.9.1"
   },
   "devDependencies": {
-    "@types/react": "^18.0.15",
     "@typescript-eslint/eslint-plugin": "^5.32.0",
     "@typescript-eslint/parser": "^5.32.0",
     "eslint": "^8.21.0",
     "nodemon": "^2.0.19",
-    "npm-run-all": "^4.1.5",
     "typescript": "^4.7.4"
   }
 }

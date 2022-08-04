@@ -1,5 +1,4 @@
 import { Client, ClientEvents, GatewayIntentBits, Partials } from "discord.js";
-import { ReacordDiscordJs } from "reacord"
 import dotenv from "dotenv";
 import cmd from "./command";
 import server from "./server";
@@ -21,8 +20,6 @@ export const client = new Client({
     Partials.Reaction,
   ]
 });
-const reacord = new ReacordDiscordJs(client)
-
 
 async function main() {
 
@@ -35,7 +32,7 @@ async function main() {
   for (const event of events) {
     client.on(
       event,
-      (eventObject: ClientEvents) => cmd.handleEvents(reacord, event, eventObject)
+      (eventObject: ClientEvents) => cmd.handleEvents(event, eventObject)
     );
   }
 

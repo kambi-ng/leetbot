@@ -19,7 +19,7 @@ function delegate(META: Meta, message: Message) {
       break;
     case "!!today":
       if (META.channel){
-        sendToday(META.channel, META.reacord)
+        sendToday(META.channel)
       }
       break;
     default:

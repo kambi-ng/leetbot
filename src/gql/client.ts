@@ -25,7 +25,7 @@ export interface ActiveDailyCodingChallengeQuestion {
 
 export interface Question {
   acRate: number,
-  difficulty: string,
+  difficulty: "Easy" | "Medium" | "Hard",
   questionId: number,
   title: string,
   likes: number,
