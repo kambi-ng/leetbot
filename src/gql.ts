@@ -7,7 +7,7 @@ export const client = new ApolloClient({
   cache: new InMemoryCache()
 });
 
-interface TopicTag {
+export interface TopicTag {
   [key: string]: string;
 }
 

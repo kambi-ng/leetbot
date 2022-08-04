@@ -1,79 +1,83 @@
-import { Message, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, CacheType, MessageOptions, ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js";
+import { Message, CacheType, } from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "discord.js";
+import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
+
 import { fetchDaily } from "./gql";
 import { convert } from "html-to-text"
-
 
 type Command = {
   name: string
   description: string
   options?: ApplicationCommandOptionData[]
-  run: (context: CommandContext) => void | Promise<unknown>
+  runSlash: (context: CommandContext) => void | Promise<unknown>
+  runMessage: (context: MessageContext) => void | Promise<unknown>
 }
 
 type CommandContext = {
-  interaction: ChatInputCommandInteraction
+  interaction: ChatInputCommandInteraction<CacheType>
   client: Client
+}
+
+type MessageContext = {
+  interaction: Message<boolean>
+  client: Client
+  args?: string[]
 }
 
 export const commands: Command[] = [
   {
     name: "ping",
     description: "Test the server reponse",
-    run: async (context: CommandContext) => {
-
+    runSlash: async ({ interaction }) => {
+      await interaction.reply("Pong!");
+    },
+    runMessage: async ({ interaction }) => {
+      await interaction.reply("Pong!");
     }
   },
   {
     name: "today",
     description: "Get today's daily leetcode problem",
-    run: async (context: CommandContext) => {
+    runSlash: async ({ interaction }) => {
+      await interaction.reply(await sendToday());
+    },
+    runMessage: async ({ interaction }) => {
+      await interaction.reply(await sendToday());
     }
+  },
+  {
+    name: "help",
+    description: "Information on how to use leetbot",
+    runSlash: async ({ interaction }) => {
+      await interaction.reply(sendHelp());
+    },
+    runMessage: async ({ interaction }) => {
+      await interaction.reply(sendHelp());
+    }
+  },
+  {
+    name: "config",
+    description: "Configure leetbot",
+    runSlash: async ({ interaction }) => {
+      await interaction.reply(await sendConfigureServer());
+    },
+    runMessage: async ({ interaction }) => {
+      if (!interaction.member?.permissions.has("Administrator")) {
+        interaction.reply("You do not have permission to use this command.");
+        return;
+      }
+      await interaction.reply(await sendConfigureServer());
+    },
+    // options: [
+    //   {
+    //     type: ApplicationCommandOptionData,
+    //   }
+    // ]
   }
-
 ]
 
-export async function reply(type: string, event: Message<boolean> | ChatInputCommandInteraction<CacheType>) {
-  let command: string = ""
-  let args: string[]
-
-  if (event instanceof Message) {
-    if (!event.content.startsWith("l!") || event.author.bot || event.author.id === event.client.user?.id) return
-    [command, ...args] = event.content.trim().slice(2).split(/\s+/);
-    console.log("command", command, args);
-  }
-
-  if (event instanceof ChatInputCommandInteraction) {
-    command = event.commandName
-    console.log("command", command);
-  }
-
-  switch (command) {
-    case "ping":
-      event.reply("PONG");
-      break;
-    case "help":
-      event.reply(sendHelp())
-      break;
-    case "config":
-      // if (!event.member?.permissions.has("Administrator")) {
-      //   event.reply("You do not have permission to use this command.");
-      //   return;
-      // }
-      // configureServer(event, args);
-      break;
-    case "today":
-      // @ts-ignore
-      event.reply(await sendToday())
-      break;
-    default:
-      console.log("Unknown command: ", command);
-      event.reply("Sorry, I don't quite understand. Do you need `/help`?");
-      break;
-  }
-}
-
-async function sendToday(): Promise<MessageOptions> {
+async function sendToday() {
   const colors: { [key: string]: ColorResolvable; } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
 
   try {
@@ -111,11 +115,11 @@ async function sendToday(): Promise<MessageOptions> {
   }
 }
 
-async function configureServer(args: string[]): Promise<string> {
+async function sendConfigureServer() {
   return "This feature is not supported yet.";
 }
 
-function sendHelp(): string {
+function sendHelp() {
   const helpContent = `
 ***LEETBOT***
 Here are available Server commands:
