@@ -1,65 +1,83 @@
-import { ClientEvents, Message, MessageReaction, ThreadChannel, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { Message, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, CacheType, MessageOptions, ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js";
 import type { ColorResolvable } from "discord.js";
 import { fetchDaily } from "./gql/endpoints";
 import { convert } from "html-to-text"
 
-function isMessage(eventObj: Message | ClientEvents): eventObj is Message {
-  const premise = eventObj as Message;
-  return premise.member !== undefined &&
-    premise.tts !== undefined;
+
+type Command = {
+  name: string
+  description: string
+  options?: ApplicationCommandOptionData[]
+  run: (context: CommandContext) => void | Promise<unknown>
 }
 
-function isReact(eventObj: MessageReaction | ClientEvents): eventObj is MessageReaction {
-  const premise = eventObj as MessageReaction;
-  return premise.message !== undefined &&
-    premise.emoji != undefined;
+type CommandContext = {
+  interaction: ChatInputCommandInteraction
+  client: Client
 }
 
-function isThread(eventObj: ThreadChannel | ClientEvents): eventObj is ThreadChannel {
-  const premise = eventObj as ThreadChannel;
-  return premise.autoArchiveDuration != undefined;
-}
+export const commands: Command[] = [
+  {
+    name: "ping",
+    description: "Test the server reponse",
+    run: async (context: CommandContext) => {
 
-function handleEvents(type: string, event: ClientEvents) {
-  console.log("type", { "message": event instanceof Message, "react": event instanceof MessageReaction, "thread": event instanceof ThreadChannel });
-  if (isMessage(event)) {
-    if (!event.content.startsWith("l!") || event.author.bot || event.author.id === event.client.user?.id) return
-
-    const [command, ...args] = event.content.trim().slice(2).split(/\s+/);
-    console.log("command", command, args);
-    switch (command) {
-      case "ping":
-        event.reply("PONG");
-        break;
-      case "help":
-        if (event.channel instanceof TextChannel) {
-          sendHelp(event.channel)
-        }
-        break;
-      case "config":
-        if (!event.member?.permissions.has("Administrator")) {
-          event.reply("You do not have permission to use this command.");
-          return;
-        }
-        configureServer(event, args);
-        break;
-      case "today":
-        if (event.channel instanceof TextChannel) {
-          sendToday(event.channel)
-        }
-        break;
-      default:
-        console.log("Unknown command: ", command);
-        event.reply("Sorry, I don't quite understand. Do you need `/help`?");
-        break;
     }
+  },
+  {
+    name: "today",
+    description: "Get today's daily leetcode problem",
+    run: async (context: CommandContext) => {
+    }
+  }
+
+]
+
+export async function reply(type: string, event: Message<boolean> | ChatInputCommandInteraction<CacheType>) {
+  let command: string = ""
+  let args: string[]
+
+  if (event instanceof Message) {
+    if (!event.content.startsWith("l!") || event.author.bot || event.author.id === event.client.user?.id) return
+    [command, ...args] = event.content.trim().slice(2).split(/\s+/);
+    console.log("command", command, args);
+  }
+
+  if (event instanceof ChatInputCommandInteraction) {
+    command = event.commandName
+    console.log("command", command);
+  }
+
+  switch (command) {
+    case "ping":
+      event.reply("PONG");
+      break;
+    case "help":
+      event.reply(sendHelp())
+      break;
+    case "config":
+      // if (!event.member?.permissions.has("Administrator")) {
+      //   event.reply("You do not have permission to use this command.");
+      //   return;
+      // }
+      // configureServer(event, args);
+      break;
+    case "today":
+      // @ts-ignore
+      event.reply(await sendToday())
+      break;
+    default:
+      console.log("Unknown command: ", command);
+      event.reply("Sorry, I don't quite understand. Do you need `/help`?");
+      break;
   }
 }
 
-async function sendToday(channel: TextChannel) {
-  const colors: { [key: string]: ColorResolvable } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
+async function sendToday(): Promise<MessageOptions> {
+  const colors: { [key: string]: ColorResolvable; } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
+
   try {
-    const data = (await fetchDaily()).data.activeDailyCodingChallengeQuestion
+    const data = (await fetchDaily()).data.activeDailyCodingChallengeQuestion;
 
     const embed = new EmbedBuilder()
       .setTitle(data.question.title)
@@ -73,30 +91,31 @@ async function sendToday(channel: TextChannel) {
         { name: "Acceptance", value: String(Math.round(data.question.acRate * 100) / 100) + "%", inline: true },
         { name: "Likes", value: String(data.question.likes), inline: true },
         { name: "Dislikes", value: String(data.question.dislikes), inline: true },
-      ])
+      ]);
 
     const row = new ActionRowBuilder<ButtonBuilder>()
       .addComponents(new ButtonBuilder()
         .setLabel("View")
         .setURL(`https://leetcode.com${data.link}`)
         .setStyle(ButtonStyle.Link)
-      )
+      );
 
-    await channel.send({ embeds: [embed], components: [row] })
+    return { embeds: [embed], components: [row] };
 
   } catch (e) {
     console.error(e);
     if (e instanceof Error) {
-      await channel.send(e.message)
+      return { content: e.message };
     }
+    return { content: "Something went wrong" };
   }
 }
 
-async function configureServer(event: ClientEvents & Message<boolean>, args: string[]) {
-  event.channel.send("This feature is not supported yet.");
+async function configureServer(args: string[]): Promise<string> {
+  return "This feature is not supported yet.";
 }
 
-async function sendHelp(channel: TextChannel) {
+function sendHelp(): string {
   const helpContent = `
 ***LEETBOT***
 Here are available Server commands:
@@ -109,9 +128,5 @@ l!config <args>
   can use this command. Use \`!!config help\` to show available commands.
 `;
 
-  await channel.send(helpContent);
+  return helpContent;
 }
-
-export default {
-  handleEvents
-};

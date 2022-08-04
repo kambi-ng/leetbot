@@ -1,6 +1,6 @@
-import { Client, ClientEvents, GatewayIntentBits, Partials } from "discord.js";
+import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
-import cmd from "./command";
+import { reply, commands } from "./command";
 dotenv.config();
 
 export const client = new Client({
@@ -21,23 +21,23 @@ export const client = new Client({
 });
 
 async function main() {
-  const eventTypes = [
-    "messageCreate",
-    "threadCreate",
-    "messageReactionAdd",
-  ];
+  client.on("ready", async (client) => {
+    await client.application.commands.set(commands);
 
-  eventTypes.map(type => {
-    client.on(
-      type,
-      (event: ClientEvents) => cmd.handleEvents(type, event)
-    );
+    const { username, tag } = client.user;
+    console.log(`LeetBot has been logged in as ${username} (${tag})!`);
+  });
+
+  client.on("messageCreate", async (interaction) => {
+    interaction.reply
+    reply("messageCreate", interaction);
   })
 
-  client.on("ready", (client: Client) => {
-    const user = client.user;
-    console.log(`LeetBot has been logged in as ${user?.username} (${user?.tag})!`);
-  });
+  client.on("interactionCreate", async (interaction) => {
+    if (interaction instanceof ChatInputCommandInteraction<CacheType>) {
+      reply("interactionCreate", interaction);
+    }
+  })
 
   client.on("error", (error: Error) => {
     console.error("Unexpected error while logging into Discord.");
