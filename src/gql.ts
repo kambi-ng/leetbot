@@ -72,19 +72,18 @@ export function fetchDaily() {
           }
         }
       `
-    });
+    }
+    );
 }
 
-export const questionTags = ['array', 'string', 'hash-table', 'dynamic-programming', 'math', 'sorting', 'depth-first-search', 'greedy', 'database', 'breadth-first-search', 'tree', 'binary-search', 'matrix', 'binary-tree', 'two-pointers', 'bit-manipulation', 'stack', 'heap-priority-queue', 'design', 'graph', 'simulation', 'prefix-sum', 'backtracking', 'counting', 'sliding-window', 'linked-list', 'union-find', 'monotonic-stack', 'ordered-set', 'recursion', 'trie', 'binary-search-tree', 'divide-and-conquer', 'enumeration', 'bitmask', 'queue', 'memoization', 'geometry', 'topological-sort', 'segment-tree', 'game-theory', 'hash-function', 'binary-indexed-tree', 'interactive', 'string-matching', 'rolling-hash', 'shortest-path', 'number-theory', 'data-stream', 'combinatorics', 'randomized', 'monotonic-queue', 'iterator', 'merge-sort', 'concurrency', 'doubly-linked-list', 'brainteaser', 'probability-and-statistics', 'quickselect', 'bucket-sort', 'suffix-array', 'minimum-spanning-tree', 'counting-sort', 'shell', 'line-sweep', 'reservoir-sampling', 'eulerian-circuit', 'radix-sort', 'strongly-connected-component', 'rejection-sampling', 'biconnected-component'] as const
-
-export type QuestionTags = typeof questionTags
+export const questionTags = ['array', 'string', 'hash-table', 'dynamic-programming', 'math', 'sorting', 'depth-first-search', 'greedy', 'database', 'breadth-first-search', 'tree', 'binary-search', 'matrix', 'binary-tree', 'two-pointers', 'bit-manipulation', 'stack', 'heap-priority-queue', 'design', 'graph', 'simulation', 'prefix-sum', 'backtracking', 'counting', 'sliding-window', 'linked-list', 'union-find', 'monotonic-stack', 'ordered-set', 'recursion', 'trie', 'binary-search-tree', 'divide-and-conquer', 'enumeration', 'bitmask', 'queue', 'memoization', 'geometry', 'topological-sort', 'segment-tree', 'game-theory', 'hash-function', 'binary-indexed-tree', 'interactive', 'string-matching', 'rolling-hash', 'shortest-path', 'number-theory', 'data-stream', 'combinatorics', 'randomized', 'monotonic-queue', 'iterator', 'merge-sort', 'concurrency', 'doubly-linked-list', 'brainteaser', 'probability-and-statistics', 'quickselect', 'bucket-sort', 'suffix-array', 'minimum-spanning-tree', 'counting-sort', 'shell', 'line-sweep', 'reservoir-sampling', 'eulerian-circuit', 'radix-sort', 'strongly-connected-component', 'rejection-sampling', 'biconnected-component']
 
 export const listIdMap = {
   "LeetCode Curated Algo 170": "552y65ke",
   "LeetCode Curated SQL 70": "5htp6xyg",
   "Top 100 Liked Questions": "79h8rn6",
   "Top Interview Questions": "wpwgkgt"
-} 
+}
 
 export type QuestionFilter = {
   difficulty?: string
@@ -126,5 +125,39 @@ export function fetchRandom({ categorySlug, filters }: Filter) {
         categorySlug,
         filters,
       }
-    });
+    }
+    );
+}
+
+export interface QuestionDetail {
+  question: Question
+}
+
+export function fetchQuestion(titleSlug: string) {
+  return client
+    .query<QuestionDetail>({
+      query: gql`
+        query questionData($titleSlug: String!) {
+            question(titleSlug: $titleSlug) {
+                acRate
+                difficulty
+                questionId
+                title
+                likes
+                dislikes
+                titleSlug
+                content
+                topicTags {
+                    name
+                    id
+                    slug
+                }
+            }
+        }
+      `,
+      variables: {
+        titleSlug,
+      }
+    }
+    );
 }

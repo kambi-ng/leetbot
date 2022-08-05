@@ -97,7 +97,6 @@ export const commands: Command[] = [
           tags: interaction.options.getString('tags')?.split(',').map(t => t.trim()).filter(t => t.length > 0),
           listId: interaction.options.getString('list') ?? undefined,
         }
-        console.log("filter",filters)
         const random = await fetchRandom({ categorySlug: "", filters })
         const question = random.data.randomQuestion
         return interaction.reply(await createEmbed(question));
@@ -166,6 +165,18 @@ export const commands: Command[] = [
       }
       await interaction.reply(await sendConfigureServer());
     },
+  },
+  {
+    name: "tags",
+    description: "Get all the available tags",
+    run: async ({ interaction }) => {
+      const embed = new EmbedBuilder()
+        .setTitle("Available tags")
+        .setDescription(questionTags.join("\n"))
+        .setColor("#0099ff")
+
+      await interaction.reply({ embeds: [embed] });
+    }
   }
 ]
 
