@@ -4,7 +4,7 @@ import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } fro
 import type { ColorResolvable } from "discord.js";
 
 import { fetchDaily, fetchRandom, Question } from "./gql";
-import { convert } from "html-to-text"
+import TurndownService from "turndown"
 
 
 export type Command = RunCombined | RunSeparate;
@@ -120,23 +120,13 @@ export const commands: Command[] = [
 
 async function createEmbed(question: Question) {
   const colors: { [key: string]: ColorResolvable; } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
+  const turndownService = new TurndownService()
   try {
 
     const embed = new EmbedBuilder()
       .setTitle(question.title)
       .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
-      .setDescription(
-        convert(
-          question.content
-            .replace(/<\/?pre>/g, "```")
-            .replace(/<\/?code>/g, "`")
-            .replace(/<\/?strong>/g, "**")
-            .replace(/<\/?em>/g, "*")
-            .replace(/<li>/g, "- ")
-            .replace(/<\/li>/g, "\n\n")
-            // .replace(/\n\s+/g, '\n\n')
-        )
-      )
+      .setDescription(turndownService.turndown(question.content))
       .setColor(colors[question.difficulty])
       .setTimestamp(Date.now())
       .setFields([
