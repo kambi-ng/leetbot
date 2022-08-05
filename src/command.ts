@@ -3,7 +3,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "dis
 import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily, fetchRandom, listIdMap, Question, QuestionFilter, questionTags } from "./gql";
+import { fetchDaily, fetchQuestion, fetchRandom, listIdMap, Question, QuestionFilter, questionTags } from "./gql";
 import TurndownService from "turndown"
 
 
@@ -177,6 +177,52 @@ export const commands: Command[] = [
 
       await interaction.reply({ embeds: [embed] });
     }
+  }, {
+    name: "question",
+    description: "Get leetcode problem by name",
+    options: [
+      {
+        name: "name",
+        description: "question name or slugs",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ],
+    runSlash: async ({ interaction }) => {
+      try {
+        let name = interaction.options.getString('name')!.toLowerCase().replaceAll(" ", "-")
+        const questionData = await fetchQuestion(name)
+        const question = questionData.data.question
+        return interaction.reply(await createEmbed(question));
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return interaction.reply(e.message);
+        }
+        return interaction.reply("Something went wrong");
+      }
+    },
+    runMessage: async ({ interaction, args }) => {
+      try {
+        let name = ''
+        if (args) {
+          if (args.length == 1) {
+            name = args[0]
+          } else if (args.length > 1) {
+            name = args.join('-').toLowerCase()
+          }
+        }
+        const questionData = await fetchQuestion(name)
+        const question = questionData.data.question
+        return interaction.reply(await createEmbed(question));
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return interaction.reply(e.message);
+        }
+        return interaction.reply("Something went wrong");
+      }
+    },
   }
 ]
 
