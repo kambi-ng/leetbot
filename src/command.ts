@@ -1,9 +1,9 @@
 import { Message, CacheType, } from "discord.js";
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "discord.js";
-import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, Client } from "discord.js"
+import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily, Question } from "./gql";
+import { fetchDaily, fetchRandom, Question } from "./gql";
 import { convert } from "html-to-text"
 
 
@@ -58,7 +58,37 @@ export const commands: Command[] = [
         }
         return { content: "Something went wrong" };
       }
-      await interaction.reply(await sendToday(question));
+      await interaction.reply(await createEmbed(question));
+    }
+  },
+  {
+    name: "random",
+    description: "Get random leetcode problem",
+    run: async ({ interaction }) => {
+      let question: Question | undefined = undefined
+      try {
+        let retry = 0
+        while (retry < 3) {
+          const random = await fetchRandom()
+          question = random.data.randomQuestion
+          if (question) {
+            break
+          }
+          retry++
+          console.log("Retry")
+          continue
+        }
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return interaction.reply(e.message);
+        }
+        return interaction.reply("Something went wrong");
+      }
+      if (question) {
+        return interaction.reply(await createEmbed(question));
+      }
+      return interaction.reply("Something went wrong");
     }
   },
   {
@@ -88,30 +118,47 @@ export const commands: Command[] = [
   }
 ]
 
-async function sendToday(question: Question) {
+async function createEmbed(question: Question) {
   const colors: { [key: string]: ColorResolvable; } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
-  const embed = new EmbedBuilder()
-    .setTitle(question.title)
-    .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
-    .setDescription(convert(question.content).replace(/\n\s+/g, '\n\n'))
-    .setColor(colors[question.difficulty])
-    .setTimestamp(Date.now())
-    .setFields([
-      { name: "Difficulty", value: question.difficulty, inline: true },
-      { name: "Tags", value: question.topicTags.map(t => t.name).join(', '), inline: true },
-      { name: "Acceptance", value: String(Math.round(question.acRate * 100) / 100) + "%", inline: true },
-      { name: "Likes", value: String(question.likes), inline: true },
-      { name: "Dislikes", value: String(question.dislikes), inline: true },
-    ]);
+  try {
 
-  const row = new ActionRowBuilder<ButtonBuilder>()
-    .addComponents(new ButtonBuilder()
-      .setLabel("View")
+    const embed = new EmbedBuilder()
+      .setTitle(question.title)
       .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
-      .setStyle(ButtonStyle.Link)
-    );
+      .setDescription(
+        convert(
+          question.content
+            .replace(/<\/?pre>/g, "```")
+            .replace(/<\/?code>/g, "`")
+            .replace(/<\/?strong>/g, "**")
+            .replace(/<\/?em>/g, "*")
+            .replace(/<li>/g, "- ")
+            .replace(/<\/li>/g, "\n\n")
+            // .replace(/\n\s+/g, '\n\n')
+        )
+      )
+      .setColor(colors[question.difficulty])
+      .setTimestamp(Date.now())
+      .setFields([
+        { name: "Difficulty", value: question.difficulty, inline: true },
+        { name: "Tags", value: question.topicTags.map(t => t.name).join(', '), inline: true },
+        { name: "Acceptance", value: String(Math.round(question.acRate * 100) / 100) + "%", inline: true },
+        { name: "Likes", value: String(question.likes), inline: true },
+        { name: "Dislikes", value: String(question.dislikes), inline: true },
+      ]);
+    const row = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(new ButtonBuilder()
+        .setLabel("View")
+        .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
+        .setStyle(ButtonStyle.Link)
+      );
 
-  return { embeds: [embed], components: [row] };
+    return { embeds: [embed], components: [row] };
+
+  } catch (e) {
+    console.log(e)
+    return "Something went wrong"
+  }
 }
 
 async function sendConfigureServer() {

@@ -1,7 +1,6 @@
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
 import { commands } from "./command";
-import type { RunCombined, RunSeparate } from "./command";
 dotenv.config();
 
 export const client = new Client({
@@ -36,6 +35,7 @@ async function main() {
 
     if (!command) {
       interaction.reply("Sorry, I don't quite understand. Do you need `l!help` or `/help`?")
+      return
     }
 
     if ("run" in command!) {

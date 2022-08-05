@@ -4,6 +4,16 @@ import 'cross-fetch/polyfill';
 
 export const client = new ApolloClient({
   uri: "https://leetcode.com/graphql/",
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'no-cache',
+      errorPolicy: 'ignore',
+    },
+    query: {
+      fetchPolicy: 'no-cache',
+      errorPolicy: 'all',
+    }
+  },
   cache: new InMemoryCache()
 });
 
@@ -68,7 +78,7 @@ export function fetchDaily() {
 interface RandomQuestionProps {
   categorySlug: string
   filters: {
-    difficulty: "EASY" | "MEDIUM" | "HARD"
+    // difficulty?: "EASY" | "MEDIUM" | "HARD" | undefined
     [key: string]: string
   }
 }
@@ -77,7 +87,7 @@ interface RandomQuestion {
   randomQuestion: Question
 }
 
-export function fetchRandom(variables: RandomQuestionProps) {
+export function fetchRandom(categorySlug: string = "", filters: { [key: string]: string } = {}) {
   return client
     .query<RandomQuestion>({
       query: gql`
@@ -99,6 +109,9 @@ export function fetchRandom(variables: RandomQuestionProps) {
           }
         }
       `,
-      variables
+      variables: {
+        categorySlug,
+        filters,
+      }
     });
 }
