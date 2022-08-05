@@ -90,7 +90,7 @@ export type ListName = keyof typeof listIdMap;
 export type ListId = typeof listIdMap[ListName];
 
 export type QuestionFilter = {
-  difficulty?: "EASY" | "MEDIUM" | "HARD"
+  difficulty?: string
   tags?: string[]
   listId?: string
 }

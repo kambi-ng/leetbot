@@ -1,9 +1,9 @@
-import { Message, CacheType, } from "discord.js";
+import { Message, CacheType, ApplicationCommandType, ApplicationCommandOptionType, } from "discord.js";
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "discord.js";
 import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily, fetchRandom, Question, QuestionFilter } from "./gql";
+import { fetchDaily, fetchRandom, Question, QuestionFilter, questionTags } from "./gql";
 import TurndownService from "turndown"
 
 
@@ -64,9 +64,32 @@ export const commands: Command[] = [
   {
     name: "random",
     description: "Get random leetcode problem",
+    options: [
+      {
+        name: "difficulty",
+        description: "chose difficulty of the problem",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: [
+          { name: "Easy", value: "EASY" },
+          { name: "Medium", value: "MEDIUM" },
+          { name: "Hard", value: "HARD" },
+        ]
+      },
+      {
+        name: "tags",
+        description: "chose tags of the problem, separated by comma",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ],
     runSlash: async ({ interaction }) => {
       try {
-        const filters = {}
+        const tags = interaction.options.getString('tags')?.split(',').map(t => t.trim()).filter(t => t.length > 0)
+        const filters: QuestionFilter = {
+          difficulty: interaction.options.getString('difficulty') ?? undefined,
+          tags,
+        }
         const random = await fetchRandom({ categorySlug: "", filters })
         const question = random.data.randomQuestion
         return interaction.reply(await createEmbed(question));
