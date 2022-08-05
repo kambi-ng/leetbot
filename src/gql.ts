@@ -75,19 +75,35 @@ export function fetchDaily() {
     });
 }
 
-interface RandomQuestionProps {
+export const questionTags = ['array', 'string', 'hash-table', 'dynamic-programming', 'math', 'sorting', 'depth-first-search', 'greedy', 'database', 'breadth-first-search', 'tree', 'binary-search', 'matrix', 'binary-tree', 'two-pointers', 'bit-manipulation', 'stack', 'heap-priority-queue', 'design', 'graph', 'simulation', 'prefix-sum', 'backtracking', 'counting', 'sliding-window', 'linked-list', 'union-find', 'monotonic-stack', 'ordered-set', 'recursion', 'trie', 'binary-search-tree', 'divide-and-conquer', 'enumeration', 'bitmask', 'queue', 'memoization', 'geometry', 'topological-sort', 'segment-tree', 'game-theory', 'hash-function', 'binary-indexed-tree', 'interactive', 'string-matching', 'rolling-hash', 'shortest-path', 'number-theory', 'data-stream', 'combinatorics', 'randomized', 'monotonic-queue', 'iterator', 'merge-sort', 'concurrency', 'doubly-linked-list', 'brainteaser', 'probability-and-statistics', 'quickselect', 'bucket-sort', 'suffix-array', 'minimum-spanning-tree', 'counting-sort', 'shell', 'line-sweep', 'reservoir-sampling', 'eulerian-circuit', 'radix-sort', 'strongly-connected-component', 'rejection-sampling', 'biconnected-component'] as const
+
+export type QuestionTags = typeof questionTags
+
+export const listIdMap = {
+  "LeetCode Curated Algo 170": "552y65ke",
+  "LeetCode Curated SQL 70": "5htp6xyg",
+  "Top 100 Liked Questions": "79h8rn6",
+  "Top Interview Questions": "wpwgkgt"
+} as const
+
+export type ListName = keyof typeof listIdMap;
+export type ListId = typeof listIdMap[ListName];
+
+export type QuestionFilter = {
+  difficulty?: "EASY" | "MEDIUM" | "HARD"
+  tags?: string[]
+  listId?: string
+}
+export type Filter = {
   categorySlug: string
-  filters: {
-    // difficulty?: "EASY" | "MEDIUM" | "HARD" | undefined
-    [key: string]: string
-  }
+  filters: QuestionFilter
 }
 
-interface RandomQuestion {
+export interface RandomQuestion {
   randomQuestion: Question
 }
 
-export function fetchRandom(categorySlug: string = "", filters: { [key: string]: string } = {}) {
+export function fetchRandom({ categorySlug, filters }: Filter) {
   return client
     .query<RandomQuestion>({
       query: gql`

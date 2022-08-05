@@ -39,9 +39,9 @@ async function main() {
     }
 
     if ("run" in command!) {
-      await command.run({ interaction, client })
+      await command.run({ interaction, client, args })
     } else {
-      await command?.runMessage({ interaction, client })
+      await command?.runMessage({ interaction, client, args })
     }
 
   })

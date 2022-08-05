@@ -3,7 +3,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "dis
 import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily, fetchRandom, Question } from "./gql";
+import { fetchDaily, fetchRandom, Question, QuestionFilter } from "./gql";
 import TurndownService from "turndown"
 
 
@@ -64,20 +64,12 @@ export const commands: Command[] = [
   {
     name: "random",
     description: "Get random leetcode problem",
-    run: async ({ interaction }) => {
-      let question: Question | undefined = undefined
+    runSlash: async ({ interaction }) => {
       try {
-        let retry = 0
-        while (retry < 3) {
-          const random = await fetchRandom()
-          question = random.data.randomQuestion
-          if (question) {
-            break
-          }
-          retry++
-          console.log("Retry")
-          continue
-        }
+        const filters = {}
+        const random = await fetchRandom({ categorySlug: "", filters })
+        const question = random.data.randomQuestion
+        return interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
@@ -85,10 +77,38 @@ export const commands: Command[] = [
         }
         return interaction.reply("Something went wrong");
       }
-      if (question) {
+    },
+    runMessage: async ({ interaction, args }) => {
+      try {
+        const filters: QuestionFilter = {}
+        if (args) {
+          args.forEach(arg => {
+            let [key, value] = arg.split('=')
+            if (key === "tags") {
+              const tags = value.split(',')
+              filters[key] = tags
+            }
+            if (key === "diff") {
+              value = value.toUpperCase()
+              if (value === "EASY" || value === "MEDIUM" || value === "HARD") {
+                filters["difficulty"] = value
+              }
+            }
+            if (key === "list") {
+              filters["listId"] = value
+            }
+          })
+        }
+        const random = await fetchRandom({ categorySlug: "", filters })
+        const question = random.data.randomQuestion
         return interaction.reply(await createEmbed(question));
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return interaction.reply(e.message);
+        }
+        return interaction.reply("Something went wrong");
       }
-      return interaction.reply("Something went wrong");
     }
   },
   {
