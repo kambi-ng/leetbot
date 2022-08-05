@@ -3,7 +3,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "dis
 import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js"
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily, fetchRandom, Question, QuestionFilter, questionTags } from "./gql";
+import { fetchDaily, fetchRandom, listIdMap, Question, QuestionFilter, questionTags } from "./gql";
 import TurndownService from "turndown"
 
 
@@ -82,14 +82,22 @@ export const commands: Command[] = [
         type: ApplicationCommandOptionType.String,
         required: false,
       },
+      {
+        name: "list",
+        description: "chose from which list to get the problem",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value }))
+      }
     ],
     runSlash: async ({ interaction }) => {
       try {
-        const tags = interaction.options.getString('tags')?.split(',').map(t => t.trim()).filter(t => t.length > 0)
         const filters: QuestionFilter = {
           difficulty: interaction.options.getString('difficulty') ?? undefined,
-          tags,
+          tags: interaction.options.getString('tags')?.split(',').map(t => t.trim()).filter(t => t.length > 0),
+          listId: interaction.options.getString('list') ?? undefined,
         }
+        console.log("filter",filters)
         const random = await fetchRandom({ categorySlug: "", filters })
         const question = random.data.randomQuestion
         return interaction.reply(await createEmbed(question));
@@ -169,7 +177,7 @@ async function createEmbed(question: Question) {
     const embed = new EmbedBuilder()
       .setTitle(question.title)
       .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
-      .setDescription(turndownService.turndown(question.content))
+      .setDescription(turndownService.turndown(question.content ?? "none"))
       .setColor(colors[question.difficulty])
       .setTimestamp(Date.now())
       .setFields([

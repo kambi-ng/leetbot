@@ -84,10 +84,7 @@ export const listIdMap = {
   "LeetCode Curated SQL 70": "5htp6xyg",
   "Top 100 Liked Questions": "79h8rn6",
   "Top Interview Questions": "wpwgkgt"
-} as const
-
-export type ListName = keyof typeof listIdMap;
-export type ListId = typeof listIdMap[ListName];
+} 
 
 export type QuestionFilter = {
   difficulty?: string
