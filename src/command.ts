@@ -1,39 +1,56 @@
-import { Message, CacheType, ApplicationCommandType, ApplicationCommandOptionType, } from "discord.js";
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from "discord.js";
-import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js"
+import {
+  Message,
+  CacheType,
+  ApplicationCommandOptionType,
+  MessageReaction,
+  ReactionEmoji,
+  User,
+  CollectorFilter,
+  ButtonInteraction
+} from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js";
 import type { ColorResolvable } from "discord.js";
 
-import { fetchDaily, fetchQuestion, fetchRandom, listIdMap, Question, QuestionFilter, questionTags } from "./gql";
-import TurndownService from "turndown"
-
+import {
+  fetchDaily,
+  fetchQuestion,
+  fetchRandom,
+  listIdMap,
+  Question,
+  QuestionFilter,
+  questionTags,
+  searchQuestion,
+} from "./gql";
+import TurndownService from "turndown";
 
 export type Command = RunCombined | RunSeparate;
 
 export type RunCombined = {
-  name: string
-  description: string
-  options?: ApplicationCommandOptionData[]
-  run: (context: CommandContext | MessageContext) => void | Promise<unknown>
-}
+  name: string;
+  description: string;
+  options?: ApplicationCommandOptionData[];
+  run: (context: CommandContext | MessageContext) => void | Promise<unknown>;
+};
 
 export type RunSeparate = {
-  name: string
-  description: string
-  options?: ApplicationCommandOptionData[]
-  runSlash: (context: CommandContext) => void | Promise<unknown>
-  runMessage: (context: MessageContext) => void | Promise<unknown>
-}
+  name: string;
+  description: string;
+  options?: ApplicationCommandOptionData[];
+  runSlash: (context: CommandContext) => void | Promise<unknown>;
+  runMessage: (context: MessageContext) => void | Promise<unknown>;
+};
 
 export type CommandContext = {
-  interaction: ChatInputCommandInteraction<CacheType>
-  client: Client
-}
+  interaction: ChatInputCommandInteraction<CacheType>;
+  client: Client;
+};
 
 export type MessageContext = {
-  interaction: Message<boolean>
-  client: Client
-  args?: string[]
-}
+  interaction: Message<boolean>;
+  client: Client;
+  args?: string[];
+};
 
 export const commands: Command[] = [
   {
@@ -41,16 +58,16 @@ export const commands: Command[] = [
     description: "Test the server reponse",
     run: async ({ interaction }) => {
       await interaction.reply("Pong!");
-    }
+    },
   },
   {
     name: "today",
     description: "Get today's daily leetcode problem",
     run: async ({ interaction }) => {
-      let question: Question
+      let question: Question;
       try {
-        const daily = await fetchDaily()
-        question = daily.data.activeDailyCodingChallengeQuestion.question
+        const daily = await fetchDaily();
+        question = daily.data.activeDailyCodingChallengeQuestion.question;
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
@@ -59,7 +76,7 @@ export const commands: Command[] = [
         return { content: "Something went wrong" };
       }
       await interaction.reply(await createEmbed(question));
-    }
+    },
   },
   {
     name: "random",
@@ -74,7 +91,7 @@ export const commands: Command[] = [
           { name: "Easy", value: "EASY" },
           { name: "Medium", value: "MEDIUM" },
           { name: "Hard", value: "HARD" },
-        ]
+        ],
       },
       {
         name: "tags",
@@ -87,18 +104,22 @@ export const commands: Command[] = [
         description: "chose from which list to get the problem",
         type: ApplicationCommandOptionType.String,
         required: false,
-        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value }))
-      }
+        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value })),
+      },
     ],
     runSlash: async ({ interaction }) => {
       try {
         const filters: QuestionFilter = {
-          difficulty: interaction.options.getString('difficulty') ?? undefined,
-          tags: interaction.options.getString('tags')?.split(',').map(t => t.trim()).filter(t => t.length > 0),
-          listId: interaction.options.getString('list') ?? undefined,
-        }
-        const random = await fetchRandom({ categorySlug: "", filters })
-        const question = random.data.randomQuestion
+          difficulty: interaction.options.getString("difficulty") ?? undefined,
+          tags: interaction.options
+            .getString("tags")
+            ?.split(",")
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0),
+          listId: interaction.options.getString("list") ?? undefined,
+        };
+        const random = await fetchRandom({ categorySlug: "", filters });
+        const question = random.data.randomQuestion;
         return interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
@@ -110,27 +131,27 @@ export const commands: Command[] = [
     },
     runMessage: async ({ interaction, args }) => {
       try {
-        const filters: QuestionFilter = {}
+        const filters: QuestionFilter = {};
         if (args) {
-          args.forEach(arg => {
-            let [key, value] = arg.split('=')
+          args.forEach((arg) => {
+            let [key, value] = arg.split("=");
             if (key === "tags") {
-              const tags = value.split(',')
-              filters[key] = tags
+              const tags = value.split(",");
+              filters[key] = tags;
             }
             if (key === "diff") {
-              value = value.toUpperCase()
+              value = value.toUpperCase();
               if (value === "EASY" || value === "MEDIUM" || value === "HARD") {
-                filters["difficulty"] = value
+                filters["difficulty"] = value;
               }
             }
             if (key === "list") {
-              filters["listId"] = value
+              filters["listId"] = value;
             }
-          })
+          });
         }
-        const random = await fetchRandom({ categorySlug: "", filters })
-        const question = random.data.randomQuestion
+        const random = await fetchRandom({ categorySlug: "", filters });
+        const question = random.data.randomQuestion;
         return interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
@@ -139,14 +160,14 @@ export const commands: Command[] = [
         }
         return interaction.reply("Something went wrong");
       }
-    }
+    },
   },
   {
     name: "help",
     description: "Information on how to use leetbot",
     run: async ({ interaction }) => {
       await interaction.reply(sendHelp());
-    }
+    },
   },
   {
     name: "config",
@@ -173,13 +194,14 @@ export const commands: Command[] = [
       const embed = new EmbedBuilder()
         .setTitle("Available tags")
         .setDescription(questionTags.join("\n"))
-        .setColor("#0099ff")
+        .setColor("#0099ff");
 
       await interaction.reply({ embeds: [embed] });
-    }
-  }, {
+    },
+  },
+  {
     name: "question",
-    description: "Get leetcode problem by name",
+    description: "get a leetcode question",
     options: [
       {
         name: "name",
@@ -190,9 +212,9 @@ export const commands: Command[] = [
     ],
     runSlash: async ({ interaction }) => {
       try {
-        let name = interaction.options.getString('name')!.toLowerCase().replaceAll(" ", "-")
-        const questionData = await fetchQuestion(name)
-        const question = questionData.data.question
+        let name = interaction.options.getString("name")!;
+        const search = await searchQuestion(name);
+        const question = search.data.problemsetQuestionList.questions[0];
         return interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
@@ -204,16 +226,16 @@ export const commands: Command[] = [
     },
     runMessage: async ({ interaction, args }) => {
       try {
-        let name = ''
+        let name = "";
         if (args) {
           if (args.length == 1) {
-            name = args[0]
+            name = args[0];
           } else if (args.length > 1) {
-            name = args.join('-').toLowerCase()
+            name = args.join("-").toLowerCase();
           }
         }
-        const questionData = await fetchQuestion(name)
-        const question = questionData.data.question
+        const questionData = await fetchQuestion(name);
+        const question = questionData.data.question;
         return interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
@@ -223,14 +245,77 @@ export const commands: Command[] = [
         return interaction.reply("Something went wrong");
       }
     },
-  }
-]
+  },
+  {
+    name: "search",
+    description: "Search leetcode question",
+    options: [
+      {
+        name: "name",
+        description: "question name or slugs",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ],
+    runSlash: async ({ interaction }) => {
+      try {
+        let name = interaction.options.getString("name")!;
+        const search = await searchQuestion(name);
+        const questions = search.data.problemsetQuestionList.questions;
+        const message = await interaction.reply(await createSearchEmbed(questions));
+
+        const collector = interaction.channel!.createMessageComponentCollector({
+          filter: (i) => {
+            return i.customId === 'prev' || i.customId === 'next';
+          }, time: 1500
+        });
+
+        collector.on('collect', async i => {
+          await i.update({ content: 'A button was clicked!' });
+        });
+
+        collector.on('end', collected => console.log(`Collected ${collected.size} items`));
+
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return interaction.reply(e.message);
+        }
+        return interaction.reply("Something went wrong");
+      }
+    },
+    runMessage: async ({ interaction, args }) => {
+      try {
+        let name = "";
+        if (args) {
+          if (args.length == 1) {
+            name = args[0];
+          } else if (args.length > 1) {
+            name = args.join("-").toLowerCase();
+          }
+        }
+        const questionData = await fetchQuestion(name);
+        const question = questionData.data.question;
+        return interaction.reply(await createEmbed(question));
+      } catch (e) {
+        console.error(e);
+        if (e instanceof Error) {
+          return interaction.reply(e.message);
+        }
+        return interaction.reply("Something went wrong");
+      }
+    },
+  },
+];
 
 async function createEmbed(question: Question) {
-  const colors: { [key: string]: ColorResolvable; } = { "Easy": "#40b46f", "Medium": "#ffc528", "Hard": "#f02723" };
-  const turndownService = new TurndownService()
+  const colors: { [key: string]: ColorResolvable } = {
+    Easy: "#40b46f",
+    Medium: "#ffc528",
+    Hard: "#f02723",
+  };
+  const turndownService = new TurndownService();
   try {
-
     const embed = new EmbedBuilder()
       .setTitle(question.title)
       .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
@@ -239,23 +324,47 @@ async function createEmbed(question: Question) {
       .setTimestamp(Date.now())
       .setFields([
         { name: "Difficulty", value: question.difficulty, inline: true },
-        { name: "Tags", value: question.topicTags.map(t => t.name).join(', '), inline: true },
-        { name: "Acceptance", value: String(Math.round(question.acRate * 100) / 100) + "%", inline: true },
+        { name: "Tags", value: question.topicTags.map((t) => t.name).join(", "), inline: true },
+        {
+          name: "Acceptance",
+          value: String(Math.round(question.acRate * 100) / 100) + "%",
+          inline: true,
+        },
         { name: "Likes", value: String(question.likes), inline: true },
         { name: "Dislikes", value: String(question.dislikes), inline: true },
       ]);
-    const row = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(new ButtonBuilder()
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
         .setLabel("View")
         .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
         .setStyle(ButtonStyle.Link)
-      );
+    );
 
     return { embeds: [embed], components: [row] };
-
   } catch (e) {
-    console.log(e)
-    return "Something went wrong"
+    console.log(e);
+    return "Something went wrong";
+  }
+}
+
+async function createSearchEmbed(questions: Question[]) {
+  try {
+    const embed = new EmbedBuilder()
+      .setTitle("Search result")
+      .setDescription(
+        questions
+          .map((q) => `${q.title} https://leetcode.com/problems/${q.titleSlug}`)
+          .join("\n")
+      )
+      .setColor("#0099ff");
+    const row = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(new ButtonBuilder().setLabel("<").setStyle(ButtonStyle.Secondary).setCustomId("prev"))
+      .addComponents(new ButtonBuilder().setLabel(">").setStyle(ButtonStyle.Secondary).setCustomId("next"))
+
+    return { embeds: [embed], components: [row] };
+  } catch (e) {
+    console.log(e);
+    return "Something went wrong";
   }
 }
 
