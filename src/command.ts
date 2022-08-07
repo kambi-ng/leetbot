@@ -213,7 +213,7 @@ export const commands: Command[] = [
     runSlash: async ({ interaction }) => {
       try {
         let name = interaction.options.getString("name")!;
-        const search = await searchQuestion(name);
+        const search = await searchQuestion(name, 0);
         const question = search.data.problemsetQuestionList.questions[0];
         return interaction.reply(await createEmbed(question));
       } catch (e) {
@@ -260,21 +260,32 @@ export const commands: Command[] = [
     runSlash: async ({ interaction }) => {
       try {
         let name = interaction.options.getString("name")!;
-        const search = await searchQuestion(name);
+        let page = 0
+        const search = await searchQuestion(name, page);
         const questions = search.data.problemsetQuestionList.questions;
-        const message = await interaction.reply(await createSearchEmbed(questions));
+        const message = await interaction.reply(await createSearchEmbed(questions, 0));
 
         const collector = interaction.channel!.createMessageComponentCollector({
           filter: (i) => {
             return i.customId === 'prev' || i.customId === 'next';
-          }, time: 1500
+          }, time: 15000
         });
 
         collector.on('collect', async i => {
-          await i.update({ content: 'A button was clicked!' });
+          if (i.customId === 'next') {
+            page++
+          } else {
+            page--
+          }
+          const search = await searchQuestion(name, page);
+          const questions = search.data.problemsetQuestionList.questions;
+
+          await i.update(await createSearchEmbed(questions, page));
         });
 
-        collector.on('end', collected => console.log(`Collected ${collected.size} items`));
+        collector.on('end', collected => {
+          console.log("end. collected", collected)
+        });
 
       } catch (e) {
         console.error(e);
@@ -347,7 +358,7 @@ async function createEmbed(question: Question) {
   }
 }
 
-async function createSearchEmbed(questions: Question[]) {
+async function createSearchEmbed(questions: Question[], page: number) {
   try {
     const embed = new EmbedBuilder()
       .setTitle("Search result")

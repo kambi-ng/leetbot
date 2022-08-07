@@ -232,7 +232,7 @@ interface SearchQuestion {
   };
 }
 
-export function searchQuestion(searchKeywords: string) {
+export function searchQuestion(searchKeywords: string, page: number) {
   return client.query<SearchQuestion>({
     query: gql`
       query problemsetQuestionList(
@@ -268,7 +268,7 @@ export function searchQuestion(searchKeywords: string) {
     `,
     variables: {
       categorySlug: "",
-      skip: 0,
+      skip: 10*page,
       limit: 10,
       filters: {
         searchKeywords,
