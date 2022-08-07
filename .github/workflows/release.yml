@@ -1,0 +1,25 @@
+
+name: "deploy"
+on: [
+  "push"
+ ]
+jobs: {
+  build: {
+    name: "Build",
+    runs-on: "ubuntu-latest",
+    steps: [
+      {
+        name: "build on server",
+        uses: "appleboy/ssh-action@master",
+        with: {
+          host: "${{ secrets.HOST }}",
+          username: "${{ secrets.USERNAME }}",
+          password: "${{ secrets.PASSWORD }}",
+          port: "${{ secrets.PORT }}",
+          script: "cd web/leetbot && git pull origin master && docker compose up --build -d"
+        }
+      }
+    ]
+  }
+ }
+
