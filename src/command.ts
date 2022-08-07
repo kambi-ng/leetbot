@@ -261,30 +261,29 @@ export const commands: Command[] = [
       try {
         let name = interaction.options.getString("name")!;
         let page = 0
+
         const search = await searchQuestion(name, page);
         const questions = search.data.problemsetQuestionList.questions;
-        const message = await interaction.reply(await createSearchEmbed(questions, 0));
+
+        const maxPage = Math.ceil(search.data.problemsetQuestionList.total / 10)
+        await interaction.reply({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
 
         const collector = interaction.channel!.createMessageComponentCollector({
-          filter: (i) => {
-            return i.customId === 'prev' || i.customId === 'next';
-          }, time: 15000
+          filter: (i) => i.customId === 'prev' || i.customId === 'next',
+          time: 15000
         });
 
-        collector.on('collect', async i => {
-          if (i.customId === 'next') {
-            page++
-          } else {
-            page--
-          }
+        collector.on('collect', async (i) => {
+          page = i.customId === 'next' ? page + 1 : page - 1;
+          page = Math.max(0, Math.min(page, maxPage - 1));
+
           const search = await searchQuestion(name, page);
           const questions = search.data.problemsetQuestionList.questions;
-
-          await i.update(await createSearchEmbed(questions, page));
+          await i.update({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
         });
 
-        collector.on('end', collected => {
-          console.log("end. collected", collected)
+        collector.on('end', (collected) => {
+          interaction.editReply({ components: [] })
         });
 
       } catch (e) {
@@ -297,17 +296,37 @@ export const commands: Command[] = [
     },
     runMessage: async ({ interaction, args }) => {
       try {
-        let name = "";
-        if (args) {
-          if (args.length == 1) {
-            name = args[0];
-          } else if (args.length > 1) {
-            name = args.join("-").toLowerCase();
-          }
+        if (!args) {
+          interaction.reply("Please provide a name");
+          return;
         }
-        const questionData = await fetchQuestion(name);
-        const question = questionData.data.question;
-        return interaction.reply(await createEmbed(question));
+        const name = args.join("-").toLowerCase();
+
+        let page = 0;
+        const search = await searchQuestion(name, page);
+        const questions = search.data.problemsetQuestionList.questions;
+
+        const maxPage = Math.ceil(search.data.problemsetQuestionList.total / 10)
+        const message = await interaction.reply({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
+
+        const collector = interaction.channel!.createMessageComponentCollector({
+          filter: (i) => i.customId === 'prev' || i.customId === 'next',
+          time: 15000
+        });
+
+        collector.on('collect', async (i) => {
+          page = i.customId === 'next' ? page + 1 : page - 1;
+          page = Math.max(0, Math.min(page, maxPage - 1));
+
+          const search = await searchQuestion(name, page);
+          const questions = search.data.problemsetQuestionList.questions;
+          await i.update({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
+        });
+
+        collector.on('end', (collected) => {
+          message.edit({ components: [] })
+        });
+
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
@@ -375,7 +394,7 @@ async function createSearchEmbed(questions: Question[], page: number) {
     return { embeds: [embed], components: [row] };
   } catch (e) {
     console.log(e);
-    return "Something went wrong";
+    return { content: "Something went wrong" };
   }
 }
 
