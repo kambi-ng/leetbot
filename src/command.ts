@@ -1,15 +1,4 @@
-import {
-  Message,
-  CacheType,
-  ApplicationCommandOptionType,
-  MessageReaction,
-  ReactionEmoji,
-  User,
-  CollectorFilter,
-  ButtonInteraction
-} from "discord.js";
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
-import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client } from "discord.js";
+import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client, Message, CacheType, ApplicationCommandOptionType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import type { ColorResolvable } from "discord.js";
 
 import {
@@ -49,15 +38,45 @@ export type CommandContext = {
 export type MessageContext = {
   interaction: Message<boolean>;
   client: Client;
-  args?: string[];
+  args: string[];
 };
 
 export const commands: Command[] = [
   {
-    name: "ping",
-    description: "Test the server reponse",
+    name: "help",
+    description: "Information on how to use leetbot",
     run: async ({ interaction }) => {
-      await interaction.reply("Pong!");
+      await interaction.reply(sendHelp());
+    },
+  },
+  {
+    name: "tags",
+    description: "Get all the available tags",
+    run: async ({ interaction }) => {
+      const embed = new EmbedBuilder()
+        .setTitle("Available tags")
+        .setDescription(questionTags.join("\n"))
+        .setColor("#0099ff");
+
+      await interaction.reply({ embeds: [embed] });
+    },
+  },
+  {
+    name: "config",
+    description: "Configure leetbot",
+    runSlash: async ({ interaction }) => {
+      if (!interaction.memberPermissions?.has("ManageChannels")) {
+        await interaction.reply("You do not have permission to use this command.");
+        return;
+      }
+      await interaction.reply(await sendConfigureServer());
+    },
+    runMessage: async ({ interaction }) => {
+      if (!interaction.member?.permissions.has("ManageChannels")) {
+        interaction.reply("You do not have permission to use this command.");
+        return;
+      }
+      await interaction.reply(await sendConfigureServer());
     },
   },
   {
@@ -66,16 +85,21 @@ export const commands: Command[] = [
     run: async ({ interaction }) => {
       let question: Question;
       try {
-        const daily = await fetchDaily();
-        question = daily.data.activeDailyCodingChallengeQuestion.question;
+        const { data, errors } = await fetchDaily();
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
+        question = data.activeDailyCodingChallengeQuestion.question;
+        await interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return { content: e.message };
+          await interaction.reply({ content: e.message })
+          return
         }
-        return { content: "Something went wrong" };
+        await interaction.reply({ content: "Something went wrong" })
       }
-      await interaction.reply(await createEmbed(question));
     },
   },
   {
@@ -111,92 +135,76 @@ export const commands: Command[] = [
       try {
         const filters: QuestionFilter = {
           difficulty: interaction.options.getString("difficulty") ?? undefined,
+          listId: interaction.options.getString("list") ?? undefined,
           tags: interaction.options
             .getString("tags")
-            ?.split(",")
+            ?.toLowerCase()
+            .split(",")
             .map((t) => t.trim())
             .filter((t) => t.length > 0),
-          listId: interaction.options.getString("list") ?? undefined,
         };
-        const random = await fetchRandom({ categorySlug: "", filters });
-        const question = random.data.randomQuestion;
-        return interaction.reply(await createEmbed(question));
+
+        const { data, errors } = await fetchRandom(filters);
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
+        const question = data.randomQuestion;
+
+        await interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return interaction.reply(e.message);
+          await interaction.reply(e.message);
+          return
         }
-        return interaction.reply("Something went wrong");
+        await interaction.reply("Something went wrong");
       }
     },
     runMessage: async ({ interaction, args }) => {
       try {
         const filters: QuestionFilter = {};
-        if (args) {
-          args.forEach((arg) => {
-            let [key, value] = arg.split("=");
-            if (key === "tags") {
-              const tags = value.split(",");
-              filters[key] = tags;
-            }
-            if (key === "diff") {
-              value = value.toUpperCase();
-              if (value === "EASY" || value === "MEDIUM" || value === "HARD") {
-                filters["difficulty"] = value;
-              }
-            }
-            if (key === "list") {
-              filters["listId"] = value;
-            }
-          });
+        const index = args.findIndex(arg => arg.includes("="))
+        if (index !== -1) {
+          const difficulty = args[index].toUpperCase();
+          if (!(difficulty === "EASY" || difficulty === "MEDIUM" || difficulty === "HARD" || difficulty === undefined)) {
+            await interaction.reply({ content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`." });
+            return
+          }
         }
-        const random = await fetchRandom({ categorySlug: "", filters });
-        const question = random.data.randomQuestion;
-        return interaction.reply(await createEmbed(question));
+        args?.forEach((arg) => {
+          let [key, value] = arg.split("=");
+          if (key === "diff") {
+            filters["difficulty"] = value.toUpperCase();
+          }
+          if (key === "list") {
+            filters["listId"] = value.toLowerCase();
+          }
+          if (key === "tags") {
+            filters[key] = value
+              ?.toLowerCase()
+              .split(",")
+              .map((t) => t.trim())
+              .filter((t) => t.length > 0)
+          }
+        });
+
+        const { data, errors } = await fetchRandom(filters);
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
+        const question = data.randomQuestion;
+
+        await interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return interaction.reply(e.message);
+          await interaction.reply(e.message);
+          return
         }
-        return interaction.reply("Something went wrong");
+        await interaction.reply("Something went wrong");
       }
-    },
-  },
-  {
-    name: "help",
-    description: "Information on how to use leetbot",
-    run: async ({ interaction }) => {
-      await interaction.reply(sendHelp());
-    },
-  },
-  {
-    name: "config",
-    description: "Configure leetbot",
-    runSlash: async ({ interaction }) => {
-      if (!interaction.memberPermissions?.has("ManageChannels")) {
-        await interaction.reply(await sendConfigureServer());
-        return;
-      }
-      await interaction.reply("You do not have permission to use this command.");
-    },
-    runMessage: async ({ interaction }) => {
-      if (!interaction.member?.permissions.has("ManageChannels")) {
-        interaction.reply("You do not have permission to use this command.");
-        return;
-      }
-      await interaction.reply(await sendConfigureServer());
-    },
-  },
-  {
-    name: "tags",
-    description: "Get all the available tags",
-    run: async ({ interaction }) => {
-      const embed = new EmbedBuilder()
-        .setTitle("Available tags")
-        .setDescription(questionTags.join("\n"))
-        .setColor("#0099ff");
-
-      await interaction.reply({ embeds: [embed] });
     },
   },
   {
@@ -209,40 +217,110 @@ export const commands: Command[] = [
         type: ApplicationCommandOptionType.String,
         required: true,
       },
+      {
+        name: "difficulty",
+        description: "chose difficulty of the problem",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: [
+          { name: "Easy", value: "EASY" },
+          { name: "Medium", value: "MEDIUM" },
+          { name: "Hard", value: "HARD" },
+        ],
+      },
+      {
+        name: "tags",
+        description: "chose tags of the problem, separated by comma",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+      {
+        name: "list",
+        description: "chose from which list to get the problem",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value })),
+      },
     ],
     runSlash: async ({ interaction }) => {
       try {
-        let name = interaction.options.getString("name")!;
-        const search = await searchQuestion(name, 0);
-        const question = search.data.problemsetQuestionList.questions[0];
-        return interaction.reply(await createEmbed(question));
+        const name = interaction.options.getString("name")!;
+        const filters: QuestionFilter = {
+          difficulty: interaction.options.getString("difficulty") ?? undefined,
+          listId: interaction.options.getString("list") ?? undefined,
+          tags: interaction.options
+            .getString("tags")
+            ?.toLowerCase()
+            .split(",")
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0),
+        };
+        const { data, errors } = await searchQuestion(name, filters);
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
+        const question = data.problemsetQuestionList.questions[0];
+
+        await interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return interaction.reply(e.message);
+          await interaction.reply(e.message);
+          return
         }
-        return interaction.reply("Something went wrong");
+        await interaction.reply("Something went wrong");
       }
     },
     runMessage: async ({ interaction, args }) => {
       try {
-        let name = "";
-        if (args) {
-          if (args.length == 1) {
-            name = args[0];
-          } else if (args.length > 1) {
-            name = args.join("-").toLowerCase();
+        if (args.length === 0) {
+          await interaction.reply("Please provide a name");
+          return
+        }
+
+        const index = args.findIndex(arg => arg.includes("="))
+        if (index !== -1) {
+          const difficulty = args[index].toUpperCase();
+          if (!(difficulty === "EASY" || difficulty === "MEDIUM" || difficulty === "HARD" || difficulty === undefined)) {
+            await interaction.reply({ content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`." });
+            return
           }
         }
-        const questionData = await fetchQuestion(name);
-        const question = questionData.data.question;
-        return interaction.reply(await createEmbed(question));
+        const filters: QuestionFilter = {};
+        args?.forEach((arg) => {
+          let [key, value] = arg.split("=");
+          if (key === "diff") {
+            filters["difficulty"] = value.toUpperCase();
+          }
+          if (key === "list") {
+            filters["listId"] = value.toLowerCase();
+          }
+          if (key === "tags") {
+            filters[key] = value
+              ?.toLowerCase()
+              .split(",")
+              .map((t) => t.trim())
+              .filter((t) => t.length > 0)
+          }
+        });
+        const name = args.filter(arg => !arg.includes("=")).join(" ").toLowerCase();
+        const { data, errors } = await fetchQuestion(name);
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
+
+        const question = data.question;
+
+        await interaction.reply(await createEmbed(question));
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return interaction.reply(e.message);
+          await interaction.reply(e.message);
+          return
         }
-        return interaction.reply("Something went wrong");
+        await interaction.reply("Something went wrong");
       }
     },
   },
@@ -256,16 +334,55 @@ export const commands: Command[] = [
         type: ApplicationCommandOptionType.String,
         required: true,
       },
+      {
+        name: "difficulty",
+        description: "chose difficulty of the problem",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: [
+          { name: "Easy", value: "EASY" },
+          { name: "Medium", value: "MEDIUM" },
+          { name: "Hard", value: "HARD" },
+        ],
+      },
+      {
+        name: "tags",
+        description: "chose tags of the problem, separated by comma",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+      {
+        name: "list",
+        description: "chose from which list to get the problem",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value })),
+      },
     ],
     runSlash: async ({ interaction }) => {
       try {
         let name = interaction.options.getString("name")!;
+        const filters: QuestionFilter = {
+          difficulty: interaction.options.getString("difficulty")?.toUpperCase(),
+          listId: interaction.options.getString("list") ?? undefined,
+          tags: interaction.options
+            .getString("tags")
+            ?.toLowerCase()
+            .split(",")
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0),
+        };
         let page = 0
 
-        const search = await searchQuestion(name, page);
-        const questions = search.data.problemsetQuestionList.questions;
+        const { data, errors } = await searchQuestion(name, filters, page);
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
 
-        const maxPage = Math.ceil(search.data.problemsetQuestionList.total / 10)
+        const questions = data.problemsetQuestionList.questions;
+
+        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10)
         await interaction.reply({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
 
         const collector = interaction.channel!.createMessageComponentCollector({
@@ -277,36 +394,71 @@ export const commands: Command[] = [
           page = i.customId === 'next' ? page + 1 : page - 1;
           page = Math.max(0, Math.min(page, maxPage - 1));
 
-          const search = await searchQuestion(name, page);
-          const questions = search.data.problemsetQuestionList.questions;
+          const { data, errors } = await searchQuestion(name, filters, page);
+          if (errors) {
+            await interaction.reply({ content: "Something went wrong" });
+            return
+          }
+          const questions = data.problemsetQuestionList.questions;
           await i.update({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
         });
 
-        collector.on('end', (collected) => {
+        collector.on('end', () => {
           interaction.editReply({ components: [] })
         });
 
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return interaction.reply(e.message);
+          await interaction.reply(e.message);
+          return
         }
-        return interaction.reply("Something went wrong");
+        await interaction.reply("Something went wrong");
       }
     },
     runMessage: async ({ interaction, args }) => {
       try {
-        if (!args) {
-          interaction.reply("Please provide a name");
+        if (args.length === 0) {
+          await interaction.reply("Please provide a name");
           return;
         }
-        const name = args.join("-").toLowerCase();
+        const filters: QuestionFilter = {};
+        const index = args.findIndex(arg => arg.includes("="))
+        if (index !== -1) {
+          const difficulty = args[index].toUpperCase();
+          if (!(difficulty === "EASY" || difficulty === "MEDIUM" || difficulty === "HARD" || difficulty === undefined)) {
+            await interaction.reply({ content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`." });
+            return
+          }
+        }
+        args?.forEach((arg) => {
+          let [key, value] = arg.split("=");
+          if (key === "diff") {
+            filters["difficulty"] = value.toUpperCase();
+          }
+          if (key === "list") {
+            filters["listId"] = value.toLowerCase();
+          }
+          if (key === "tags") {
+            filters[key] = value
+              ?.toLowerCase()
+              .split(",")
+              .map((t) => t.trim())
+              .filter((t) => t.length > 0)
+          }
+        });
 
+        const name = args.filter(arg => !arg.includes("=")).join(" ").toLowerCase();
         let page = 0;
-        const search = await searchQuestion(name, page);
-        const questions = search.data.problemsetQuestionList.questions;
 
-        const maxPage = Math.ceil(search.data.problemsetQuestionList.total / 10)
+        const { data, errors } = await searchQuestion(name, filters, page);
+        if (errors) {
+          await interaction.reply({ content: "Question not found." });
+          return
+        }
+        const questions = data.problemsetQuestionList.questions;
+
+        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10)
         const message = await interaction.reply({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
 
         const collector = interaction.channel!.createMessageComponentCollector({
@@ -318,21 +470,26 @@ export const commands: Command[] = [
           page = i.customId === 'next' ? page + 1 : page - 1;
           page = Math.max(0, Math.min(page, maxPage - 1));
 
-          const search = await searchQuestion(name, page);
-          const questions = search.data.problemsetQuestionList.questions;
+          const { data, errors } = await searchQuestion(name, filters, page);
+          if (errors) {
+            await interaction.reply({ content: "Something went wrong" });
+            return
+          }
+          const questions = data.problemsetQuestionList.questions;
           await i.update({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
         });
 
-        collector.on('end', (collected) => {
+        collector.on('end', () => {
           message.edit({ components: [] })
         });
 
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          return interaction.reply(e.message);
+          await interaction.reply(e.message);
+          return
         }
-        return interaction.reply("Something went wrong");
+        await interaction.reply("Something went wrong");
       }
     },
   },
@@ -373,7 +530,7 @@ async function createEmbed(question: Question) {
     return { embeds: [embed], components: [row] };
   } catch (e) {
     console.log(e);
-    return "Something went wrong";
+    return { content: "Something went wrong" };
   }
 }
 
@@ -383,7 +540,7 @@ async function createSearchEmbed(questions: Question[], page: number) {
       .setTitle("Search result")
       .setDescription(
         questions
-          .map((q) => `${q.title} https://leetcode.com/problems/${q.titleSlug}`)
+          .map((q, i) => `${page * 10 + i + 1}) ${q.title} https://leetcode.com/problems/${q.titleSlug}`)
           .join("\n")
       )
       .setColor("#0099ff");
@@ -399,21 +556,20 @@ async function createSearchEmbed(questions: Question[], page: number) {
 }
 
 async function sendConfigureServer() {
-  return "This feature is not supported yet.";
+  return { content: "This feature is not supported yet." };
 }
 
 function sendHelp() {
   const helpContent = `
 ***LEETBOT***
 Here are available Server commands:
-l!ping
+l!ping or /ping
   Test the server reponse
-l!help
+l!help or /help
   Display this message
-l!config <args>
+l!config <args> or /config <args>
   Configure this server, only serevr member with MANAGE_CHANNEL permission
-  can use this command. Use \`!!config help\` to show available commands.
-`;
-
-  return helpContent;
+  can use this command. Use \`/config help\` to show available commands.
+`
+  return { content: helpContent }
 }

@@ -157,6 +157,7 @@ export type QuestionFilter = {
   tags?: string[];
   listId?: string;
 };
+
 export type Filter = {
   categorySlug: string;
   filters: QuestionFilter;
@@ -166,7 +167,7 @@ interface RandomQuestion {
   randomQuestion: Question;
 }
 
-export function fetchRandom({ categorySlug, filters }: Filter) {
+export function fetchRandom(filters: QuestionFilter) {
   return client.query<RandomQuestion>({
     query: gql`
       query randomQuestion($categorySlug: String, $filters: QuestionListFilterInput) {
@@ -188,7 +189,7 @@ export function fetchRandom({ categorySlug, filters }: Filter) {
       }
     `,
     variables: {
-      categorySlug,
+      categorySlug: "",
       filters,
     },
   });
@@ -232,7 +233,7 @@ interface SearchQuestion {
   };
 }
 
-export function searchQuestion(searchKeywords: string, page: number) {
+export function searchQuestion(searchKeywords: string, filters: QuestionFilter, page: number = 0) {
   return client.query<SearchQuestion>({
     query: gql`
       query problemsetQuestionList(
@@ -268,10 +269,11 @@ export function searchQuestion(searchKeywords: string, page: number) {
     `,
     variables: {
       categorySlug: "",
-      skip: 10*page,
+      skip: 10 * page,
       limit: 10,
       filters: {
         searchKeywords,
+        ...filters,
       },
     },
   });

@@ -30,7 +30,7 @@ async function main() {
 
   client.on("messageCreate", async (interaction) => {
     if (!interaction.content.startsWith("l!") || interaction.author.bot || interaction.author.id === interaction.client.user?.id) return
-    const [commandName, ...args] = interaction.content.trim().slice(2).split(/\s+/);
+    const [commandName, ...args] = interaction.content.trim().slice(2).match(/"[^"]+"|[^\s]+/g)?.map(e => e.replace(/"(.+)"/, "$1")) ?? [];
     const command = commands.find(c => c.name === commandName)
 
     if (!command) {
