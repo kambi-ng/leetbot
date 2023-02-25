@@ -15,6 +15,8 @@ RUN pnpm build
 #Run stage
 FROM node:gallium-alpine3.16
 WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
 COPY --from=builder app/dist ./dist
 COPY .env .env
 CMD ["npm", "start"]
