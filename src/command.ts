@@ -67,8 +67,13 @@ class ConfigManager {
     const release = await this.mutex.acquire()
 
     const settingsPath = getSettingsPath();
-    const rawSettings = await readFile(settingsPath, "utf-8")
-    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
+    const [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+    if (readErr) {
+      console.error(readErr);
+      return undefined
+    }
+    // i know this is stupid, but i'm too lazy to fix it
+    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
     if (err) {
       console.error(err);
       if (err instanceof SyntaxError) {
@@ -92,8 +97,13 @@ class ConfigManager {
     const release = await this.mutex.acquire()
 
     const settingsPath = getSettingsPath();
-    const rawSettings = await readFile(settingsPath, "utf-8")
-    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
+    const [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+    if (readErr) {
+      console.error(readErr);
+      return undefined
+    }
+    // i know this is stupid, but i'm too lazy to fix it
+    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
     if (err) {
       console.error(err);
       if (err instanceof SyntaxError) {
