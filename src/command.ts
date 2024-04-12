@@ -89,6 +89,31 @@ class ConfigManager {
     return { release, config }
   }
 
+
+  async getConfigs(): Promise<{ release: MutexInterface.Releaser, configs: Record<string, Config> } | undefined> {
+    const release = await this.mutex.acquire()
+
+    const settingsPath = getSettingsPath();
+    const rawSettings = await readFile(settingsPath, "utf-8")
+    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
+    if (err) {
+      console.error(err);
+      if (err instanceof SyntaxError) {
+        unverifiedSettings = {}
+      }
+    }
+
+    const settings = configSchema.safeParse(unverifiedSettings);
+    if (!settings.success) {
+      console.error(settings.error);
+      return undefined
+    }
+
+    const configs = settings.data
+
+    return { release, configs }
+  }
+
   async setConfig(guildId: string, config: Config) {
     return this.mutex.runExclusive(async () => {
       console.log("setting config")
@@ -114,11 +139,12 @@ class ConfigManager {
 
       await writeFile(settingsPath, JSON.stringify(settings.data, null, 2));
     })
+
   }
 }
 
 
-const configManager = new ConfigManager();
+export const configManager = new ConfigManager();
 
 export type Command = RunCombined | RunSeparate;
 

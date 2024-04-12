@@ -1,6 +1,6 @@
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
-import { commands } from "./command";
+import { commands, configManager } from "./command";
 import { readFile, mkdir } from "node:fs/promises"
 
 dotenv.config();
@@ -78,6 +78,42 @@ async function main() {
   });
 
   client.login(process.env.DC_TOKEN);
+
+
 }
 
-main().catch(e => console.error(e));
+function worker() {
+  console.log("Worker started")
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  console.log(`Current time is ${currentTime}`)
+  // loop all settings in every minute. Check if the time is the same as the current time and send the message
+
+  setInterval(async () => {
+    const data = await configManager.getConfigs()
+    if (!data) return
+
+    const { configs, release } = data
+    for (const [guildId, record] of Object.entries(configs)) {
+      const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+      console.log(`Checking guild ${guildId} with time ${record.time} and current time ${currentTime}`)
+
+      if (record.time === currentTime) {
+        const guild = await client.guilds.fetch(guildId)
+        console.log(`Sending message to guild ${guild}`)
+
+        const channel = await guild.channels.fetch(record.channelId)
+        console.log(`Sending message to channel ${channel}`)
+
+        if (channel && "send" in channel) {
+          await channel.send("It's time to do the task!")
+        }
+      }
+    }
+
+
+    release()
+  }, 10 * 1000)
+}
+
+Promise.allSettled([main(), worker()]).catch(e => console.error(e));
