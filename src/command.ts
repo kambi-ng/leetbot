@@ -114,7 +114,6 @@ class ConfigManager {
 
   async setConfig(guildId: string, config: Config) {
     return this.mutex.runExclusive(async () => {
-      console.log("setting config")
       const settingsPath = getSettingsPath();
       const rawSettings = await readFile(settingsPath, "utf-8")
       let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
@@ -177,7 +176,22 @@ export const commands: Command[] = [
     name: "help",
     description: "Information on how to use leetbot",
     run: async ({ interaction }) => {
-      await interaction.reply(sendHelp());
+      const embed = new EmbedBuilder()
+        .setTitle("LEETBOT")
+        .setDescription(`
+**LEETBOT**
+Here are available Server commands:
+- \`/help\` Display this message
+- \`/config\` [time] [channelid] [command] Configure the daily question, only serevr member with \`MANAGE_CHANNEL\` permission can use this command.
+- \`/today\` Get today's daily leetcode problem
+- \`/random\` [difficulty] [tags] [list] Get random leetcode problem
+- \`/search\` [name] [difficulty] [tags] [list] Search leetcode question
+- \`/tags\` Get all the available tags
+`)
+        .setColor("#0099ff")
+        .setURL("https://leetcode.com")
+
+      await interaction.reply({ embeds: [embed] });
     },
   },
   {
@@ -225,11 +239,11 @@ export const commands: Command[] = [
         return;
       }
 
-      // validate if the time is in 24h format
       const time = interaction.options.getString("time")!;
       const channelId = interaction.options.getString("channelid")!;
       const command = interaction.options.getString("command")!;
 
+      // validate if the time is in 24h format
       const HOURS_REGEX = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
       if (!HOURS_REGEX.test(time)) {
         await interaction.reply("Invalid time format. Please use 24h format.");
@@ -250,7 +264,7 @@ export const commands: Command[] = [
       await interaction.reply("Saving configuration...");
 
       const res = await configManager.setConfig(interaction.guildId!, config);
-      if (!res) {
+      if (res) {
         await interaction.editReply("Something went wrong.");
         return;
       }
@@ -268,7 +282,7 @@ export const commands: Command[] = [
     },
   },
   {
-    name: "getconfig",
+    name: "settings",
     description: "Get leetbot configuration",
     runSlash: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
@@ -749,7 +763,7 @@ export async function createEmbed(question: Question) {
 
     return { embeds: [embed], components: [row] };
   } catch (e) {
-    console.log(e);
+    console.error(e);
     return { content: "Something went wrong" };
   }
 }
@@ -770,22 +784,8 @@ async function createSearchEmbed(questions: Question[], page: number) {
 
     return { embeds: [embed], components: [row] };
   } catch (e) {
-    console.log(e);
+    console.error(e);
     return { content: "Something went wrong" };
   }
 }
 
-function sendHelp() {
-  const helpContent = `
-***LEETBOT***
-Here are available Server commands:
-l!ping or /ping
-  Test the server reponse
-l!help or /help
-  Display this message
-l!config <args> or /config <args>
-  Configure this server, only serevr member with MANAGE_CHANNEL permission
-  can use this command. Use \`/config help\` to show available commands.
-`
-  return { content: helpContent }
-}

@@ -64,11 +64,16 @@ async function main() {
     if (interaction instanceof ChatInputCommandInteraction<CacheType>) {
       const command = commands.find(c => c.name === interaction.commandName)!
 
-      if ("run" in command!) {
-        await command.run({ interaction, client })
-      } else {
-        await command?.runSlash({ interaction, client })
+      try {
+        if ("run" in command!) {
+          await command.run({ interaction, client })
+        } else {
+          await command?.runSlash({ interaction, client })
+        }
+      } catch (e) {
+        console.error(e)
       }
+
     }
   })
 
