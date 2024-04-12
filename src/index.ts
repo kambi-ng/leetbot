@@ -1,7 +1,17 @@
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
 import { commands } from "./command";
+import { readFile, mkdir } from "node:fs/promises"
+
 dotenv.config();
+
+const DEFAULT_SETTINGS_PATH = "settings";
+
+export function getSettingsPath() {
+  // asuming on unix like
+  return (process.env.SETTINGS_PATH ?? DEFAULT_SETTINGS_PATH) + "/settings.json";
+}
+
 
 export const client = new Client({
   intents: [
@@ -21,6 +31,9 @@ export const client = new Client({
 });
 
 async function main() {
+  // create dir if not exist
+  await mkdir(process.env.SETTINGS_PATH ?? DEFAULT_SETTINGS_PATH, { recursive: true })
+
   client.on("ready", async (client) => {
     await client.application.commands.set(commands);
 

@@ -1,5 +1,37 @@
 import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client, Message, CacheType, ApplicationCommandOptionType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import type { ColorResolvable } from "discord.js";
+import { Mutex, MutexInterface } from "async-mutex"
+import { z } from "zod"
+import { readFile, writeFile } from "node:fs/promises"
+
+export const tryCatch = <Data, FnArgs extends any[]>(
+  fn: (...args: FnArgs) => Data,
+  ...fnArgs: FnArgs
+): [Error] | [null, Data] => {
+  try {
+    return [null, fn(...fnArgs)];
+  } catch (err) {
+    if (!(err instanceof Error)) {
+      return [new Error(String(err))];
+    }
+    return [err];
+  }
+};
+
+export const tryToCatch = async <Data, FnArgs extends any[]>(
+  fn: (...args: FnArgs) => Promise<Data> | Data,
+  ...fnArgs: FnArgs
+): Promise<[Error] | [null, Data]> => {
+  try {
+    return [null, await fn(...fnArgs)];
+  } catch (err) {
+    if (!(err instanceof Error)) {
+      return [new Error(String(err))];
+    }
+    return [err];
+  }
+};
+
 
 import {
   fetchDaily,
@@ -12,6 +44,81 @@ import {
   searchQuestion,
 } from "./gql";
 import TurndownService from "turndown";
+import { client, getSettingsPath } from ".";
+
+const configSchema = z.record(
+  z.object({
+    channelId: z.string(),
+    time: z.string(),
+    command: z.string(),
+  })
+);
+
+type ConfigDB = z.infer<typeof configSchema>
+type Config = z.infer<typeof configSchema>["guildId"]
+
+
+class ConfigManager {
+  mutex: Mutex;
+
+  constructor() {
+    this.mutex = new Mutex();
+  }
+
+  async getConfig(guildId: string): Promise<{ release: MutexInterface.Releaser, config: Config } | undefined> {
+    const release = await this.mutex.acquire()
+
+    const settingsPath = getSettingsPath();
+    const rawSettings = await readFile(settingsPath, "utf-8")
+    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
+    if (err) {
+      console.error(err);
+      if (err instanceof SyntaxError) {
+        unverifiedSettings = {}
+      }
+    }
+
+    const settings = configSchema.safeParse(unverifiedSettings);
+    if (!settings.success) {
+      console.error(settings.error);
+      return undefined
+    }
+
+    const config = settings.data[guildId];
+
+    return { release, config }
+  }
+
+  async setConfig(guildId: string, config: Config) {
+    return this.mutex.runExclusive(async () => {
+      console.log("setting config")
+      const settingsPath = getSettingsPath();
+      const rawSettings = await readFile(settingsPath, "utf-8")
+      let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
+      if (err) {
+        console.error(err);
+        if (err instanceof SyntaxError) {
+          unverifiedSettings = {}
+        } else {
+          return err
+        }
+      }
+
+      const settings = configSchema.safeParse(unverifiedSettings);
+      if (!settings.success) {
+        console.error(settings.error);
+        return settings.error
+      }
+
+      settings.data[guildId] = config;
+
+      await writeFile(settingsPath, JSON.stringify(settings.data, null, 2));
+    })
+  }
+}
+
+
+const configManager = new ConfigManager();
 
 export type Command = RunCombined | RunSeparate;
 
@@ -64,19 +171,75 @@ export const commands: Command[] = [
   {
     name: "config",
     description: "Configure leetbot",
+    options: [
+      {
+        name: "time",
+        description: "time of the day in 24h format",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+      {
+        name: "channelid",
+        description: "channel id to send the question",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+      {
+        name: "command",
+        description: "chose difficulty of the problem",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+        choices: [
+          { name: "today", value: "today" },
+          { name: "random", value: "random" },
+        ],
+      },
+    ],
     runSlash: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
         await interaction.reply("You do not have permission to use this command.");
         return;
       }
-      await interaction.reply(await sendConfigureServer());
+
+      // validate if the time is in 24h format
+      const time = interaction.options.getString("time")!;
+      const channelId = interaction.options.getString("channelid")!;
+      const command = interaction.options.getString("command")!;
+
+      const HOURS_REGEX = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+      if (!HOURS_REGEX.test(time)) {
+        await interaction.reply("Invalid time format. Please use 24h format.");
+        return;
+      }
+
+      if (!client.channels.cache.has(channelId)) {
+        await interaction.reply("Invalid channel id.");
+        return;
+      }
+
+      const config: Config = {
+        channelId,
+        time,
+        command,
+      };
+
+      await interaction.reply("Saving configuration...");
+
+      const res = await configManager.setConfig(interaction.guildId!, config);
+      if (!res) {
+        await interaction.editReply("Something went wrong.");
+        return;
+      }
+
+      await interaction.editReply("Configuration has been saved.");
+
     },
     runMessage: async ({ interaction }) => {
-      if (!interaction.member?.permissions.has("ManageChannels")) {
+      if (!interaction.member?.permissions?.has("ManageChannels")) {
         interaction.reply("You do not have permission to use this command.");
         return;
       }
-      await interaction.reply(await sendConfigureServer());
+      await interaction.reply({ content: "blom bisa gan" });
     },
   },
   {
@@ -553,10 +716,6 @@ async function createSearchEmbed(questions: Question[], page: number) {
     console.log(e);
     return { content: "Something went wrong" };
   }
-}
-
-async function sendConfigureServer() {
-  return { content: "This feature is not supported yet." };
 }
 
 function sendHelp() {
