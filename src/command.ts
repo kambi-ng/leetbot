@@ -246,12 +246,12 @@ Here are available Server commands:
       // validate if the time is in 24h format
       const HOURS_REGEX = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
       if (!HOURS_REGEX.test(time)) {
-        await interaction.reply("Invalid time format. Please use 24h format.");
+        await interaction.reply({ content: "Invalid time format. Please use 24h format.", ephemeral: true });
         return;
       }
 
       if (!client.channels.cache.has(channelId)) {
-        await interaction.reply("Invalid channel id.");
+        await interaction.reply({ content: "Invalid channel id.", ephemeral: true });
         return;
       }
 
@@ -261,7 +261,7 @@ Here are available Server commands:
         command,
       };
 
-      await interaction.reply("Saving configuration...");
+      await interaction.reply({ content: "Saving configuration...", ephemeral: true });
 
       const res = await configManager.setConfig(interaction.guildId!, config);
       if (res) {
@@ -270,7 +270,6 @@ Here are available Server commands:
       }
 
       await interaction.editReply("Configuration has been saved.");
-
     },
 
     runMessage: async ({ interaction }) => {
