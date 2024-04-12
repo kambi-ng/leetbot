@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client, Message, CacheType, ApplicationCommandOptionType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client, Message, CacheType, ApplicationCommandOptionType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionResolvable } from "discord.js";
 import type { ColorResolvable } from "discord.js";
 import { Mutex, MutexInterface } from "async-mutex"
 import { z } from "zod"
@@ -149,6 +149,7 @@ export type RunCombined = {
   name: string;
   description: string;
   options?: ApplicationCommandOptionData[];
+  defaultMemberPermissions?: PermissionResolvable
   run: (context: CommandContext | MessageContext) => void | Promise<unknown>;
 };
 
@@ -209,6 +210,7 @@ Here are available Server commands:
   {
     name: "config",
     description: "Configure leetbot",
+    defaultMemberPermissions: ["ManageChannels"],
     options: [
       {
         name: "time",
@@ -283,6 +285,7 @@ Here are available Server commands:
   {
     name: "settings",
     description: "Get leetbot configuration",
+    defaultMemberPermissions: ["ManageChannels"],
     runSlash: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
         await interaction.reply("You do not have permission to use this command.");
