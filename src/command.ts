@@ -67,11 +67,17 @@ class ConfigManager {
     const release = await this.mutex.acquire()
 
     const settingsPath = getSettingsPath();
-    const [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
-    if (readErr) {
+    let [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+    //@ts-ignore
+    if (readErr && readErr.code !== "ENOENT") {
       console.error(readErr);
       return undefined
     }
+
+    if (rawSettings === undefined) {
+      return undefined
+    }
+
     // i know this is stupid, but i'm too lazy to fix it
     let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
     if (err) {
@@ -97,11 +103,17 @@ class ConfigManager {
     const release = await this.mutex.acquire()
 
     const settingsPath = getSettingsPath();
-    const [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
-    if (readErr) {
+    let [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+    //@ts-ignore
+    if (readErr && readErr.code !== "ENOENT") {
       console.error(readErr);
       return undefined
     }
+
+    if (rawSettings === undefined) {
+      return undefined
+    }
+
     // i know this is stupid, but i'm too lazy to fix it
     let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
     if (err) {
@@ -125,8 +137,16 @@ class ConfigManager {
   async setConfig(guildId: string, config: Config) {
     return this.mutex.runExclusive(async () => {
       const settingsPath = getSettingsPath();
-      const rawSettings = await readFile(settingsPath, "utf-8")
-      let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings)
+      let [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+      //@ts-ignore
+      if (readErr && readErr.code !== "ENOENT") {
+        console.error(readErr);
+        return readErr
+      } else {
+        rawSettings = "{}"
+      }
+      // i know this is stupid, but i'm too lazy to fix it
+      let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
       if (err) {
         console.error(err);
         if (err instanceof SyntaxError) {
