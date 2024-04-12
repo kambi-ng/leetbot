@@ -54,9 +54,7 @@ const configSchema = z.record(
   })
 );
 
-type ConfigDB = z.infer<typeof configSchema>
 type Config = z.infer<typeof configSchema>["guildId"]
-
 
 class ConfigManager {
   mutex: Mutex;
@@ -259,6 +257,39 @@ export const commands: Command[] = [
 
       await interaction.editReply("Configuration has been saved.");
 
+    },
+
+    runMessage: async ({ interaction }) => {
+      if (!interaction.member?.permissions?.has("ManageChannels")) {
+        interaction.reply("You do not have permission to use this command.");
+        return;
+      }
+      await interaction.reply({ content: "blom bisa gan" });
+    },
+  },
+  {
+    name: "getconfig",
+    description: "Get leetbot configuration",
+    runSlash: async ({ interaction }) => {
+      if (!interaction.memberPermissions?.has("ManageChannels")) {
+        await interaction.reply("You do not have permission to use this command.");
+        return;
+      }
+
+      const data = await configManager.getConfig(interaction.guildId!);
+      if (!data) {
+        await interaction.reply("No configuration found.");
+        return;
+      }
+
+      const { config, release } = data;
+
+      const embed = new EmbedBuilder()
+        .setTitle("Configuration")
+        .setDescription(`Channel: <#${config.channelId}>\nTime: ${config.time}\nCommand: ${config.command}`)
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      release()
     },
     runMessage: async ({ interaction }) => {
       if (!interaction.member?.permissions?.has("ManageChannels")) {

@@ -79,8 +79,6 @@ async function main() {
   });
 
   client.login(process.env.DC_TOKEN);
-
-
 }
 
 function worker() {
@@ -97,18 +95,13 @@ function worker() {
     for (const [guildId, record] of Object.entries(configs)) {
       const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-      console.log(`Checking guild ${guildId} with time ${record.time} and current time ${currentTime}`)
+      // console.log(`Checking guild ${guildId} with time ${record.time} and current time ${currentTime}`)
 
       if (record.time === currentTime) {
         const guild = await client.guilds.fetch(guildId)
-        console.log(`Sending message to guild ${guild}`)
-
         const channel = await guild.channels.fetch(record.channelId)
-        console.log(`Sending message to channel ${channel}`)
-
         if (channel && "send" in channel) {
           if (record.command == "today") {
-
             let question: Question;
             try {
               const { data, errors } = await fetchDaily();
