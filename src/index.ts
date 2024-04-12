@@ -1,7 +1,8 @@
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
 import dotenv from "dotenv";
-import { commands, configManager } from "./command";
+import { commands, configManager, createEmbed } from "./command";
 import { readFile, mkdir } from "node:fs/promises"
+import { fetchDaily, Question } from "./gql";
 
 dotenv.config();
 
@@ -106,14 +107,32 @@ function worker() {
         console.log(`Sending message to channel ${channel}`)
 
         if (channel && "send" in channel) {
-          await channel.send("It's time to do the task!")
+          if (record.command == "today") {
+
+            let question: Question;
+            try {
+              const { data, errors } = await fetchDaily();
+              if (errors) {
+                await channel.send({ content: "Question not found." });
+                return
+              }
+              question = data.activeDailyCodingChallengeQuestion.question;
+              await channel.send(await createEmbed(question));
+            } catch (e) {
+              console.error(e);
+              if (e instanceof Error) {
+                await channel.send({ content: e.message })
+                return
+              }
+              await channel.send({ content: "Something went wrong" })
+            }
+          }
         }
       }
     }
 
-
     release()
-  }, 10 * 1000)
+  }, 60 * 1000)
 }
 
 Promise.allSettled([main(), worker()]).catch(e => console.error(e));

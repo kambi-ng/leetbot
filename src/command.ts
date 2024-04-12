@@ -217,7 +217,7 @@ export const commands: Command[] = [
         required: true,
         choices: [
           { name: "today", value: "today" },
-          { name: "random", value: "random" },
+          // { name: "random", value: "random" },
         ],
       },
     ],
@@ -684,7 +684,7 @@ export const commands: Command[] = [
   },
 ];
 
-async function createEmbed(question: Question) {
+export async function createEmbed(question: Question) {
   const colors: { [key: string]: ColorResolvable } = {
     Easy: "#40b46f",
     Medium: "#ffc528",
