@@ -1,8 +1,20 @@
-import { ApplicationCommandOptionData, ChatInputCommandInteraction, Client, Message, CacheType, ApplicationCommandOptionType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionResolvable } from "discord.js";
+import {
+  ApplicationCommandOptionData,
+  ChatInputCommandInteraction,
+  Client,
+  Message,
+  CacheType,
+  ApplicationCommandOptionType,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionResolvable,
+} from "discord.js";
 import type { ColorResolvable } from "discord.js";
-import { Mutex, MutexInterface } from "async-mutex"
-import { z } from "zod"
-import { readFile, writeFile } from "node:fs/promises"
+import { Mutex, MutexInterface } from "async-mutex";
+import { z } from "zod";
+import { readFile, writeFile } from "node:fs/promises";
 
 export const tryCatch = <Data, FnArgs extends any[]>(
   fn: (...args: FnArgs) => Data,
@@ -32,7 +44,6 @@ export const tryToCatch = async <Data, FnArgs extends any[]>(
   }
 };
 
-
 import {
   fetchDaily,
   fetchQuestion,
@@ -51,10 +62,10 @@ const configSchema = z.record(
     channelId: z.string(),
     time: z.string(),
     command: z.string(),
-  })
+  }),
 );
 
-type Config = z.infer<typeof configSchema>["guildId"]
+type Config = z.infer<typeof configSchema>["guildId"];
 
 class ConfigManager {
   mutex: Mutex;
@@ -63,113 +74,130 @@ class ConfigManager {
     this.mutex = new Mutex();
   }
 
-  async getConfig(guildId: string): Promise<{ release: MutexInterface.Releaser, config: Config } | undefined> {
-    const release = await this.mutex.acquire()
+  async getConfig(
+    guildId: string,
+  ): Promise<{ release: MutexInterface.Releaser; config: Config } | undefined> {
+    const release = await this.mutex.acquire();
 
     const settingsPath = getSettingsPath();
-    let [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+    let [readErr, rawSettings] = await tryToCatch(
+      readFile,
+      settingsPath,
+      "utf-8",
+    );
     //@ts-ignore
     if (readErr && readErr.code !== "ENOENT") {
       console.error(readErr);
-      return undefined
+      return undefined;
     }
 
     if (rawSettings === undefined) {
-      return undefined
+      return undefined;
     }
 
     // i know this is stupid, but i'm too lazy to fix it
-    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
+    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string);
     if (err) {
       console.error(err);
       if (err instanceof SyntaxError) {
-        unverifiedSettings = {}
+        unverifiedSettings = {};
       }
     }
 
     const settings = configSchema.safeParse(unverifiedSettings);
     if (!settings.success) {
       console.error(settings.error);
-      return undefined
+      return undefined;
     }
 
     const config = settings.data[guildId];
 
-    return { release, config }
+    return { release, config };
   }
 
-
-  async getConfigs(): Promise<{ release: MutexInterface.Releaser, configs: Record<string, Config> } | undefined> {
-    const release = await this.mutex.acquire()
+  async getConfigs(): Promise<
+    | { release: MutexInterface.Releaser; configs: Record<string, Config> }
+    | undefined
+  > {
+    const release = await this.mutex.acquire();
 
     const settingsPath = getSettingsPath();
-    let [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+    let [readErr, rawSettings] = await tryToCatch(
+      readFile,
+      settingsPath,
+      "utf-8",
+    );
     //@ts-ignore
     if (readErr && readErr.code !== "ENOENT") {
       console.error(readErr);
-      return undefined
+      return undefined;
     }
 
     if (rawSettings === undefined) {
-      return undefined
+      return undefined;
     }
 
     // i know this is stupid, but i'm too lazy to fix it
-    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
+    let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string);
     if (err) {
       console.error(err);
       if (err instanceof SyntaxError) {
-        unverifiedSettings = {}
+        unverifiedSettings = {};
       }
     }
 
     const settings = configSchema.safeParse(unverifiedSettings);
     if (!settings.success) {
       console.error(settings.error);
-      return undefined
+      return undefined;
     }
 
-    const configs = settings.data
+    const configs = settings.data;
 
-    return { release, configs }
+    return { release, configs };
   }
 
   async setConfig(guildId: string, config: Config) {
     return this.mutex.runExclusive(async () => {
       const settingsPath = getSettingsPath();
-      let [readErr, rawSettings] = await tryToCatch(readFile, settingsPath, "utf-8")
+      let [readErr, rawSettings] = await tryToCatch(
+        readFile,
+        settingsPath,
+        "utf-8",
+      );
       //@ts-ignore
       if (readErr && readErr.code !== "ENOENT") {
         console.error(readErr);
-        return readErr
+        return readErr;
       } else {
-        rawSettings = "{}"
+        rawSettings = "{}";
       }
       // i know this is stupid, but i'm too lazy to fix it
-      let [err, unverifiedSettings] = tryCatch(JSON.parse, rawSettings as string)
+      let [err, unverifiedSettings] = tryCatch(
+        JSON.parse,
+        rawSettings as string,
+      );
       if (err) {
         console.error(err);
         if (err instanceof SyntaxError) {
-          unverifiedSettings = {}
+          unverifiedSettings = {};
         } else {
-          return err
+          return err;
         }
       }
 
       const settings = configSchema.safeParse(unverifiedSettings);
       if (!settings.success) {
         console.error(settings.error);
-        return settings.error
+        return settings.error;
       }
 
       settings.data[guildId] = config;
 
       await writeFile(settingsPath, JSON.stringify(settings.data, null, 2));
-    })
-
+    });
   }
 }
-
 
 export const configManager = new ConfigManager();
 
@@ -179,7 +207,7 @@ export type RunCombined = {
   name: string;
   description: string;
   options?: ApplicationCommandOptionData[];
-  defaultMemberPermissions?: PermissionResolvable
+  defaultMemberPermissions?: PermissionResolvable;
   run: (context: CommandContext | MessageContext) => void | Promise<unknown>;
 };
 
@@ -209,7 +237,8 @@ export const commands: Command[] = [
     run: async ({ interaction }) => {
       const embed = new EmbedBuilder()
         .setTitle("LEETBOT")
-        .setDescription(`
+        .setDescription(
+          `
 **LEETBOT**
 Here are available Server commands:
 - \`/help\` Display this message
@@ -218,9 +247,10 @@ Here are available Server commands:
 - \`/random\` [difficulty] [tags] [list] Get random leetcode problem
 - \`/search\` [name] [difficulty] [tags] [list] Search leetcode question
 - \`/tags\` Get all the available tags
-`)
+`,
+        )
         .setColor("#0099ff")
-        .setURL("https://leetcode.com")
+        .setURL("https://leetcode.com");
 
       await interaction.reply({ embeds: [embed] });
     },
@@ -267,7 +297,9 @@ Here are available Server commands:
     ],
     runSlash: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
-        await interaction.reply("You do not have permission to use this command.");
+        await interaction.reply(
+          "You do not have permission to use this command.",
+        );
         return;
       }
 
@@ -278,12 +310,18 @@ Here are available Server commands:
       // validate if the time is in 24h format
       const HOURS_REGEX = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
       if (!HOURS_REGEX.test(time)) {
-        await interaction.reply({ content: "Invalid time format. Please use 24h format.", ephemeral: true });
+        await interaction.reply({
+          content: "Invalid time format. Please use 24h format.",
+          ephemeral: true,
+        });
         return;
       }
 
       if (!client.channels.cache.has(channelId)) {
-        await interaction.reply({ content: "Invalid channel id.", ephemeral: true });
+        await interaction.reply({
+          content: "Invalid channel id.",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -293,7 +331,10 @@ Here are available Server commands:
         command,
       };
 
-      await interaction.reply({ content: "Saving configuration...", ephemeral: true });
+      await interaction.reply({
+        content: "Saving configuration...",
+        ephemeral: true,
+      });
 
       const res = await configManager.setConfig(interaction.guildId!, config);
       if (res) {
@@ -318,7 +359,9 @@ Here are available Server commands:
     defaultMemberPermissions: ["ManageChannels"],
     runSlash: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
-        await interaction.reply("You do not have permission to use this command.");
+        await interaction.reply(
+          "You do not have permission to use this command.",
+        );
         return;
       }
 
@@ -332,10 +375,12 @@ Here are available Server commands:
 
       const embed = new EmbedBuilder()
         .setTitle("Configuration")
-        .setDescription(`Channel: <#${config.channelId}>\nTime: ${config.time}\nCommand: ${config.command}`)
+        .setDescription(
+          `Channel: <#${config.channelId}>\nTime: ${config.time}\nCommand: ${config.command}`,
+        );
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
-      release()
+      release();
     },
     runMessage: async ({ interaction }) => {
       if (!interaction.member?.permissions?.has("ManageChannels")) {
@@ -348,24 +393,45 @@ Here are available Server commands:
   {
     name: "today",
     description: "Get today's daily leetcode problem",
-    run: async ({ interaction }) => {
+    runSlash: async ({ interaction }) => {
       let question: Question;
       try {
         const { data, errors } = await fetchDaily();
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
         question = data.activeDailyCodingChallengeQuestion.question;
         await interaction.reply(await createEmbed(question));
+
+        const collector = interaction.channel!.createMessageComponentCollector({
+          filter: (i) => i.customId === "thread",
+          time: 60 * 1000,
+        });
+
+        collector.on("collect", async (i) => {
+          await i.deferUpdate();
+          await i.message.startThread({
+            name: question.title,
+            autoArchiveDuration: 60 * 24 * 3, // 3 days
+          });
+        });
+
+        collector.on("end", async (collected) => {
+          console.log(`Collected ${collected.size} threads`);
+          interaction.editReply({ components: [] });
+        });
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
-          await interaction.reply({ content: e.message })
-          return
+          await interaction.reply({ content: e.message });
+          return;
         }
-        await interaction.reply({ content: "Something went wrong" })
+        await interaction.reply({ content: "Something went wrong" });
       }
+    },
+    runMessage: async ({ interaction }) => {
+
     },
   },
   {
@@ -394,7 +460,10 @@ Here are available Server commands:
         description: "chose from which list to get the problem",
         type: ApplicationCommandOptionType.String,
         required: false,
-        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value })),
+        choices: Object.entries(listIdMap).map(([name, value]) => ({
+          name,
+          value,
+        })),
       },
     ],
     runSlash: async ({ interaction }) => {
@@ -413,7 +482,7 @@ Here are available Server commands:
         const { data, errors } = await fetchRandom(filters);
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
         const question = data.randomQuestion;
 
@@ -422,7 +491,7 @@ Here are available Server commands:
         console.error(e);
         if (e instanceof Error) {
           await interaction.reply(e.message);
-          return
+          return;
         }
         await interaction.reply("Something went wrong");
       }
@@ -430,12 +499,21 @@ Here are available Server commands:
     runMessage: async ({ interaction, args }) => {
       try {
         const filters: QuestionFilter = {};
-        const index = args.findIndex(arg => arg.includes("="))
+        const index = args.findIndex((arg) => arg.includes("="));
         if (index !== -1) {
           const difficulty = args[index].toUpperCase();
-          if (!(difficulty === "EASY" || difficulty === "MEDIUM" || difficulty === "HARD" || difficulty === undefined)) {
-            await interaction.reply({ content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`." });
-            return
+          if (
+            !(
+              difficulty === "EASY" ||
+              difficulty === "MEDIUM" ||
+              difficulty === "HARD" ||
+              difficulty === undefined
+            )
+          ) {
+            await interaction.reply({
+              content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`.",
+            });
+            return;
           }
         }
         args?.forEach((arg) => {
@@ -451,14 +529,14 @@ Here are available Server commands:
               ?.toLowerCase()
               .split(",")
               .map((t) => t.trim())
-              .filter((t) => t.length > 0)
+              .filter((t) => t.length > 0);
           }
         });
 
         const { data, errors } = await fetchRandom(filters);
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
         const question = data.randomQuestion;
 
@@ -467,7 +545,7 @@ Here are available Server commands:
         console.error(e);
         if (e instanceof Error) {
           await interaction.reply(e.message);
-          return
+          return;
         }
         await interaction.reply("Something went wrong");
       }
@@ -505,7 +583,10 @@ Here are available Server commands:
         description: "chose from which list to get the problem",
         type: ApplicationCommandOptionType.String,
         required: false,
-        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value })),
+        choices: Object.entries(listIdMap).map(([name, value]) => ({
+          name,
+          value,
+        })),
       },
     ],
     runSlash: async ({ interaction }) => {
@@ -524,7 +605,7 @@ Here are available Server commands:
         const { data, errors } = await searchQuestion(name, filters);
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
         const question = data.problemsetQuestionList.questions[0];
 
@@ -533,7 +614,7 @@ Here are available Server commands:
         console.error(e);
         if (e instanceof Error) {
           await interaction.reply(e.message);
-          return
+          return;
         }
         await interaction.reply("Something went wrong");
       }
@@ -542,15 +623,24 @@ Here are available Server commands:
       try {
         if (args.length === 0) {
           await interaction.reply("Please provide a name");
-          return
+          return;
         }
 
-        const index = args.findIndex(arg => arg.includes("="))
+        const index = args.findIndex((arg) => arg.includes("="));
         if (index !== -1) {
           const difficulty = args[index].toUpperCase();
-          if (!(difficulty === "EASY" || difficulty === "MEDIUM" || difficulty === "HARD" || difficulty === undefined)) {
-            await interaction.reply({ content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`." });
-            return
+          if (
+            !(
+              difficulty === "EASY" ||
+              difficulty === "MEDIUM" ||
+              difficulty === "HARD" ||
+              difficulty === undefined
+            )
+          ) {
+            await interaction.reply({
+              content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`.",
+            });
+            return;
           }
         }
         const filters: QuestionFilter = {};
@@ -567,14 +657,17 @@ Here are available Server commands:
               ?.toLowerCase()
               .split(",")
               .map((t) => t.trim())
-              .filter((t) => t.length > 0)
+              .filter((t) => t.length > 0);
           }
         });
-        const name = args.filter(arg => !arg.includes("=")).join(" ").toLowerCase();
+        const name = args
+          .filter((arg) => !arg.includes("="))
+          .join(" ")
+          .toLowerCase();
         const { data, errors } = await fetchQuestion(name);
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
 
         const question = data.question;
@@ -584,7 +677,7 @@ Here are available Server commands:
         console.error(e);
         if (e instanceof Error) {
           await interaction.reply(e.message);
-          return
+          return;
         }
         await interaction.reply("Something went wrong");
       }
@@ -622,14 +715,19 @@ Here are available Server commands:
         description: "chose from which list to get the problem",
         type: ApplicationCommandOptionType.String,
         required: false,
-        choices: Object.entries(listIdMap).map(([name, value]) => ({ name, value })),
+        choices: Object.entries(listIdMap).map(([name, value]) => ({
+          name,
+          value,
+        })),
       },
     ],
     runSlash: async ({ interaction }) => {
       try {
         let name = interaction.options.getString("name")!;
         const filters: QuestionFilter = {
-          difficulty: interaction.options.getString("difficulty")?.toUpperCase(),
+          difficulty: interaction.options
+            .getString("difficulty")
+            ?.toUpperCase(),
           listId: interaction.options.getString("list") ?? undefined,
           tags: interaction.options
             .getString("tags")
@@ -638,46 +736,51 @@ Here are available Server commands:
             .map((t) => t.trim())
             .filter((t) => t.length > 0),
         };
-        let page = 0
+        let page = 0;
 
         const { data, errors } = await searchQuestion(name, filters, page);
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
 
         const questions = data.problemsetQuestionList.questions;
 
-        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10)
-        await interaction.reply({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
-
-        const collector = interaction.channel!.createMessageComponentCollector({
-          filter: (i) => i.customId === 'prev' || i.customId === 'next',
-          time: 15000
+        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10);
+        await interaction.reply({
+          content: `page ${page + 1}/${maxPage}`,
+          ...(await createSearchEmbed(questions, page)),
         });
 
-        collector.on('collect', async (i) => {
-          page = i.customId === 'next' ? page + 1 : page - 1;
+        const collector = interaction.channel!.createMessageComponentCollector({
+          filter: (i) => i.customId === "prev" || i.customId === "next",
+          time: 15000,
+        });
+
+        collector.on("collect", async (i) => {
+          page = i.customId === "next" ? page + 1 : page - 1;
           page = Math.max(0, Math.min(page, maxPage - 1));
 
           const { data, errors } = await searchQuestion(name, filters, page);
           if (errors) {
             await interaction.reply({ content: "Something went wrong" });
-            return
+            return;
           }
           const questions = data.problemsetQuestionList.questions;
-          await i.update({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
+          await i.update({
+            content: `page ${page + 1}/${maxPage}`,
+            ...(await createSearchEmbed(questions, page)),
+          });
         });
 
-        collector.on('end', () => {
-          interaction.editReply({ components: [] })
+        collector.on("end", () => {
+          interaction.editReply({ components: [] });
         });
-
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
           await interaction.reply(e.message);
-          return
+          return;
         }
         await interaction.reply("Something went wrong");
       }
@@ -689,12 +792,21 @@ Here are available Server commands:
           return;
         }
         const filters: QuestionFilter = {};
-        const index = args.findIndex(arg => arg.includes("="))
+        const index = args.findIndex((arg) => arg.includes("="));
         if (index !== -1) {
           const difficulty = args[index].toUpperCase();
-          if (!(difficulty === "EASY" || difficulty === "MEDIUM" || difficulty === "HARD" || difficulty === undefined)) {
-            await interaction.reply({ content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`." });
-            return
+          if (
+            !(
+              difficulty === "EASY" ||
+              difficulty === "MEDIUM" ||
+              difficulty === "HARD" ||
+              difficulty === undefined
+            )
+          ) {
+            await interaction.reply({
+              content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`.",
+            });
+            return;
           }
         }
         args?.forEach((arg) => {
@@ -710,50 +822,58 @@ Here are available Server commands:
               ?.toLowerCase()
               .split(",")
               .map((t) => t.trim())
-              .filter((t) => t.length > 0)
+              .filter((t) => t.length > 0);
           }
         });
 
-        const name = args.filter(arg => !arg.includes("=")).join(" ").toLowerCase();
+        const name = args
+          .filter((arg) => !arg.includes("="))
+          .join(" ")
+          .toLowerCase();
         let page = 0;
 
         const { data, errors } = await searchQuestion(name, filters, page);
         if (errors) {
           await interaction.reply({ content: "Question not found." });
-          return
+          return;
         }
         const questions = data.problemsetQuestionList.questions;
 
-        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10)
-        const message = await interaction.reply({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
-
-        const collector = interaction.channel!.createMessageComponentCollector({
-          filter: (i) => i.customId === 'prev' || i.customId === 'next',
-          time: 15000
+        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10);
+        const message = await interaction.reply({
+          content: `page ${page + 1}/${maxPage}`,
+          ...(await createSearchEmbed(questions, page)),
         });
 
-        collector.on('collect', async (i) => {
-          page = i.customId === 'next' ? page + 1 : page - 1;
+        const collector = interaction.channel!.createMessageComponentCollector({
+          filter: (i) => i.customId === "prev" || i.customId === "next",
+          time: 15000,
+        });
+
+        collector.on("collect", async (i) => {
+          page = i.customId === "next" ? page + 1 : page - 1;
           page = Math.max(0, Math.min(page, maxPage - 1));
 
           const { data, errors } = await searchQuestion(name, filters, page);
           if (errors) {
             await interaction.reply({ content: "Something went wrong" });
-            return
+            return;
           }
           const questions = data.problemsetQuestionList.questions;
-          await i.update({ content: `page ${page + 1}/${maxPage}`, ...await createSearchEmbed(questions, page) });
+          await i.update({
+            content: `page ${page + 1}/${maxPage}`,
+            ...(await createSearchEmbed(questions, page)),
+          });
         });
 
-        collector.on('end', () => {
-          message.edit({ components: [] })
+        collector.on("end", () => {
+          message.edit({ components: [] });
         });
-
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
           await interaction.reply(e.message);
-          return
+          return;
         }
         await interaction.reply("Something went wrong");
       }
@@ -777,7 +897,11 @@ export async function createEmbed(question: Question) {
       .setTimestamp(Date.now())
       .setFields([
         { name: "Difficulty", value: question.difficulty, inline: true },
-        { name: "Tags", value: question.topicTags.map((t) => t.name).join(", "), inline: true },
+        {
+          name: "Tags",
+          value: question.topicTags.map((t) => t.name).join(", "),
+          inline: true,
+        },
         {
           name: "Acceptance",
           value: String(Math.round(question.acRate * 100) / 100) + "%",
@@ -786,12 +910,20 @@ export async function createEmbed(question: Question) {
         { name: "Likes", value: String(question.likes), inline: true },
         { name: "Dislikes", value: String(question.dislikes), inline: true },
       ]);
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setLabel("View")
-        .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
-        .setStyle(ButtonStyle.Link)
-    );
+
+    const row = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel("View")
+          .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
+          .setStyle(ButtonStyle.Link),
+      )
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel("Create Thread")
+          .setCustomId("thread")
+          .setStyle(ButtonStyle.Primary),
+      );
 
     return { embeds: [embed], components: [row] };
   } catch (e) {
@@ -806,13 +938,26 @@ async function createSearchEmbed(questions: Question[], page: number) {
       .setTitle("Search result")
       .setDescription(
         questions
-          .map((q, i) => `${page * 10 + i + 1}) ${q.title} https://leetcode.com/problems/${q.titleSlug}`)
-          .join("\n")
+          .map(
+            (q, i) =>
+              `${page * 10 + i + 1}) ${q.title} https://leetcode.com/problems/${q.titleSlug}`,
+          )
+          .join("\n"),
       )
       .setColor("#0099ff");
     const row = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(new ButtonBuilder().setLabel("<").setStyle(ButtonStyle.Secondary).setCustomId("prev"))
-      .addComponents(new ButtonBuilder().setLabel(">").setStyle(ButtonStyle.Secondary).setCustomId("next"))
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel("<")
+          .setStyle(ButtonStyle.Secondary)
+          .setCustomId("prev"),
+      )
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel(">")
+          .setStyle(ButtonStyle.Secondary)
+          .setCustomId("next"),
+      );
 
     return { embeds: [embed], components: [row] };
   } catch (e) {
@@ -820,4 +965,3 @@ async function createSearchEmbed(questions: Question[], page: number) {
     return { content: "Something went wrong" };
   }
 }
-

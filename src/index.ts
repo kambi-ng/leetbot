@@ -1,7 +1,13 @@
-import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits, Partials } from "discord.js";
+import {
+  CacheType,
+  ChatInputCommandInteraction,
+  Client,
+  GatewayIntentBits,
+  Partials,
+} from "discord.js";
 import dotenv from "dotenv";
 import { commands, configManager, createEmbed } from "./command";
-import { readFile, mkdir } from "node:fs/promises"
+import { mkdir } from "node:fs/promises";
 import { fetchDaily, Question } from "./gql";
 
 dotenv.config();
@@ -10,9 +16,10 @@ const DEFAULT_SETTINGS_PATH = "settings";
 
 export function getSettingsPath() {
   // asuming on unix like
-  return (process.env.SETTINGS_PATH ?? DEFAULT_SETTINGS_PATH) + "/settings.json";
+  return (
+    (process.env.SETTINGS_PATH ?? DEFAULT_SETTINGS_PATH) + "/settings.json"
+  );
 }
-
 
 export const client = new Client({
   intents: [
@@ -24,16 +31,22 @@ export const client = new Client({
     GatewayIntentBits.DirectMessageReactions,
     GatewayIntentBits.MessageContent,
   ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.Reaction,
-  ]
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
+// TODO: move everything to one file
+// TODO: remove message command and use slash command only
+// TODO: make question embed to create thread and start it with the question
+// TODO: add integration to leetcode and make it able to submit the answer to leetcode
+// NOTE: make backend save session and cookie to make it able to submit the answer. make modal to submit username and password
+// NOTE: i can use csrf from cookie and login to leetcode to submit the answer. might need to move a proper database. need to rethink
+// TODO: make ranks and leaderboard
+// TODO: maybe make it link to a github repo and make it user can submit their answer to comunity repo
 async function main() {
   // create dir if not exist
-  await mkdir(process.env.SETTINGS_PATH ?? DEFAULT_SETTINGS_PATH, { recursive: true })
+  await mkdir(process.env.SETTINGS_PATH ?? DEFAULT_SETTINGS_PATH, {
+    recursive: true,
+  });
 
   client.on("ready", async (client) => {
     await client.application.commands.set(commands);
@@ -43,39 +56,49 @@ async function main() {
   });
 
   client.on("messageCreate", async (interaction) => {
-    if (!interaction.content.startsWith("l!") || interaction.author.bot || interaction.author.id === interaction.client.user?.id) return
-    const [commandName, ...args] = interaction.content.trim().slice(2).match(/"[^"]+"|[^\s]+/g)?.map(e => e.replace(/"(.+)"/, "$1")) ?? [];
-    const command = commands.find(c => c.name === commandName)
+    if (
+      !interaction.content.startsWith("l!") ||
+      interaction.author.bot ||
+      interaction.author.id === interaction.client.user?.id
+    )
+      return;
+    const [commandName, ...args] =
+      interaction.content
+        .trim()
+        .slice(2)
+        .match(/"[^"]+"|[^\s]+/g)
+        ?.map((e) => e.replace(/"(.+)"/, "$1")) ?? [];
+    const command = commands.find((c) => c.name === commandName);
 
     if (!command) {
-      interaction.reply("Sorry, I don't quite understand. Do you need `l!help` or `/help`?")
-      return
+      interaction.reply(
+        "Sorry, I don't quite understand. Do you need `l!help` or `/help`?",
+      );
+      return;
     }
 
     if ("run" in command!) {
-      await command.run({ interaction, client, args })
+      await command.run({ interaction, client, args });
     } else {
-      await command?.runMessage({ interaction, client, args })
+      await command?.runMessage({ interaction, client, args });
     }
-
-  })
+  });
 
   client.on("interactionCreate", async (interaction) => {
-    if (interaction instanceof ChatInputCommandInteraction<CacheType>) {
-      const command = commands.find(c => c.name === interaction.commandName)!
+    if (interaction instanceof ChatInputCommandInteraction) {
+      const command = commands.find((c) => c.name === interaction.commandName)!;
 
       try {
         if ("run" in command!) {
-          await command.run({ interaction, client })
+          await command.run({ interaction, client });
         } else {
-          await command?.runSlash({ interaction, client })
+          await command?.runSlash({ interaction, client });
         }
       } catch (e) {
-        console.error(e)
+        console.error(e);
       }
-
     }
-  })
+  });
 
   client.on("error", (error: Error) => {
     console.error("Unexpected error while logging into Discord.");
@@ -87,24 +110,31 @@ async function main() {
 }
 
 function worker() {
-  console.log("Worker started")
-  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  console.log(`Current time is ${currentTime}`)
+  console.log("Worker started");
+  const currentTime = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  console.log(`Current time is ${currentTime}`);
   // loop all settings in every minute. Check if the time is the same as the current time and send the message
 
   setInterval(async () => {
-    const data = await configManager.getConfigs()
-    if (!data) return
+    const data = await configManager.getConfigs();
+    if (!data) return;
 
-    const { configs, release } = data
+    const { configs, release } = data;
     for (const [guildId, record] of Object.entries(configs)) {
-      const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      const currentTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
 
       // console.log(`Checking guild ${guildId} with time ${record.time} and current time ${currentTime}`)
 
       if (record.time === currentTime) {
-        const guild = await client.guilds.fetch(guildId)
-        const channel = await guild.channels.fetch(record.channelId)
+        const guild = await client.guilds.fetch(guildId);
+        const channel = await guild.channels.fetch(record.channelId);
         if (channel && "send" in channel) {
           if (record.command == "today") {
             let question: Question;
@@ -112,25 +142,43 @@ function worker() {
               const { data, errors } = await fetchDaily();
               if (errors) {
                 await channel.send({ content: "Question not found." });
-                return
+                return;
               }
               question = data.activeDailyCodingChallengeQuestion.question;
               await channel.send(await createEmbed(question));
+
+              const collector = channel.createMessageComponentCollector({
+                filter: (i) => i.customId === "thread",
+                time: 60000,
+              });
+
+              collector.on("collect", async (i) => {
+                console.log("Thread button clicked");
+                await i.deferUpdate();
+                await i.message.startThread({
+                  name: question.title,
+                  // autoArchiveDuration: 60,
+                });
+              });
+
+              collector.on("end", async (collected) => {
+                console.log(`Collected ${collected.size} threads`);
+              });
             } catch (e) {
               console.error(e);
               if (e instanceof Error) {
-                await channel.send({ content: e.message })
-                return
+                await channel.send({ content: e.message });
+                return;
               }
-              await channel.send({ content: "Something went wrong" })
+              await channel.send({ content: "Something went wrong" });
             }
           }
         }
       }
     }
 
-    release()
-  }, 60 * 1000)
+    release();
+  }, 60 * 1000);
 }
 
-Promise.allSettled([main(), worker()]).catch(e => console.error(e));
+Promise.allSettled([main(), worker()]).catch((e) => console.error(e));
