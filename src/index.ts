@@ -97,8 +97,6 @@ function worker() {
         hour12: false,
       });
 
-      // console.log(`Checking guild ${guildId} with time ${record.time} and current time ${currentTime}`)
-
       if (record.time === currentTime) {
         const guild = await client.guilds.fetch(guildId);
         const channel = await guild.channels.fetch(record.channelId);
@@ -112,24 +110,16 @@ function worker() {
                 return;
               }
               question = data.activeDailyCodingChallengeQuestion.question;
-              await channel.send(await createEmbed(question));
+              const embed = await createEmbed(question);
 
-              const collector = channel.createMessageComponentCollector({
-                filter: (i) => i.customId === "thread",
-                time: 60000,
-              });
+              const message = await channel.send(embed);
+              if ("content" in embed) {
+                return;
+              }
 
-              collector.on("collect", async (i) => {
-                console.log("Thread button clicked");
-                await i.deferUpdate();
-                await i.message.startThread({
-                  name: question.title,
-                  // autoArchiveDuration: 60,
-                });
-              });
-
-              collector.on("end", async (collected) => {
-                console.log(`Collected ${collected.size} threads`);
+              await message.startThread({
+                name: question.title,
+                autoArchiveDuration: 60 * 24 * 3, // 3 days
               });
             } catch (e) {
               console.error(e);
