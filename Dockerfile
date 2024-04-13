@@ -1,5 +1,5 @@
 # Build stage
-FROM node:gallium-alpine3.16 as builder
+FROM node:iron-alpine3.19 as builder
 
 WORKDIR /app
 COPY package*.json ./
