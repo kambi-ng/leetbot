@@ -336,7 +336,6 @@ Here are available Server commands:
 
       await interaction.editReply("Configuration has been saved.");
     },
-
   },
   {
     name: "settings",
@@ -380,11 +379,16 @@ Here are available Server commands:
           return;
         }
         question = data.activeDailyCodingChallengeQuestion.question;
-        await interaction.reply(await createEmbed(question));
+        const embed = await createEmbed(question);
+        await interaction.reply(embed);
+
+        if ("content" in embed) {
+          return;
+        }
 
         const collector = interaction.channel!.createMessageComponentCollector({
           filter: (i) => i.customId === "thread",
-          time: 60 * 1000,
+          time: 5 * 60 * 1000,
         });
 
         collector.on("collect", async (i) => {
@@ -397,7 +401,7 @@ Here are available Server commands:
 
         collector.on("end", async (collected) => {
           console.log(`Collected ${collected.size} threads`);
-          interaction.editReply({ components: [] });
+          interaction.editReply({ components: embed.editedComponents });
         });
       } catch (e) {
         console.error(e);
@@ -461,7 +465,30 @@ Here are available Server commands:
         }
         const question = data.randomQuestion;
 
-        await interaction.reply(await createEmbed(question));
+        const embed = await createEmbed(question);
+        await interaction.reply(embed);
+
+        if ("content" in embed) {
+          return;
+        }
+
+        const collector = interaction.channel!.createMessageComponentCollector({
+          filter: (i) => i.customId === "thread",
+          time: 5 * 60 * 1000,
+        });
+
+        collector.on("collect", async (i) => {
+          await i.deferUpdate();
+          await i.message.startThread({
+            name: question.title,
+            autoArchiveDuration: 60 * 24 * 3, // 3 days
+          });
+        });
+
+        collector.on("end", async (collected) => {
+          console.log(`Collected ${collected.size} threads`);
+          interaction.editReply({ components: embed.editedComponents });
+        });
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
@@ -612,7 +639,7 @@ Here are available Server commands:
 
         const collector = interaction.channel!.createMessageComponentCollector({
           filter: (i) => i.customId === "prev" || i.customId === "next",
-          time: 15000,
+          time: 15 * 1000,
         });
 
         collector.on("collect", async (i) => {
@@ -676,21 +703,40 @@ export async function createEmbed(question: Question) {
         { name: "Dislikes", value: String(question.dislikes), inline: true },
       ]);
 
-    const row = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setLabel("View")
-          .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
-          .setStyle(ButtonStyle.Link),
-      )
-      .addComponents(
-        new ButtonBuilder()
-          .setLabel("Create Thread")
-          .setCustomId("thread")
-          .setStyle(ButtonStyle.Primary),
-      );
+    const view = new ButtonBuilder()
+      .setLabel("View")
+      .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
+      .setStyle(ButtonStyle.Link);
 
-    return { embeds: [embed], components: [row] };
+    const editedView = new ButtonBuilder()
+      .setLabel("View")
+      .setURL(`https://leetcode.com/problems/${question.titleSlug}`)
+      .setStyle(ButtonStyle.Link);
+
+    const thread = new ButtonBuilder()
+      .setLabel("Create Thread")
+      .setCustomId("thread")
+      .setStyle(ButtonStyle.Primary);
+
+    const threadDisable = new ButtonBuilder()
+      .setLabel("Create Thread")
+      .setCustomId("thread")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(true);
+
+    const row = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(view)
+      .addComponents(thread);
+
+    const editedRow = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(editedView)
+      .addComponents(threadDisable);
+
+    return {
+      embeds: [embed],
+      components: [row],
+      editedComponents: [editedRow],
+    };
   } catch (e) {
     console.error(e);
     return { content: "Something went wrong" };
