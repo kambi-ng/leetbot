@@ -201,22 +201,14 @@ class ConfigManager {
 
 export const configManager = new ConfigManager();
 
-export type Command = RunCombined | RunSeparate;
+export type Command = RunCombined;
 
 export type RunCombined = {
   name: string;
   description: string;
   options?: ApplicationCommandOptionData[];
   defaultMemberPermissions?: PermissionResolvable;
-  run: (context: CommandContext | MessageContext) => void | Promise<unknown>;
-};
-
-export type RunSeparate = {
-  name: string;
-  description: string;
-  options?: ApplicationCommandOptionData[];
-  runSlash: (context: CommandContext) => void | Promise<unknown>;
-  runMessage: (context: MessageContext) => void | Promise<unknown>;
+  run: (context: CommandContext) => void | Promise<unknown>;
 };
 
 export type CommandContext = {
@@ -295,7 +287,7 @@ Here are available Server commands:
         ],
       },
     ],
-    runSlash: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
         await interaction.reply(
           "You do not have permission to use this command.",
@@ -345,19 +337,12 @@ Here are available Server commands:
       await interaction.editReply("Configuration has been saved.");
     },
 
-    runMessage: async ({ interaction }) => {
-      if (!interaction.member?.permissions?.has("ManageChannels")) {
-        interaction.reply("You do not have permission to use this command.");
-        return;
-      }
-      await interaction.reply({ content: "blom bisa gan" });
-    },
   },
   {
     name: "settings",
     description: "Get leetbot configuration",
     defaultMemberPermissions: ["ManageChannels"],
-    runSlash: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
         await interaction.reply(
           "You do not have permission to use this command.",
@@ -382,18 +367,11 @@ Here are available Server commands:
       await interaction.reply({ embeds: [embed], ephemeral: true });
       release();
     },
-    runMessage: async ({ interaction }) => {
-      if (!interaction.member?.permissions?.has("ManageChannels")) {
-        interaction.reply("You do not have permission to use this command.");
-        return;
-      }
-      await interaction.reply({ content: "blom bisa gan" });
-    },
   },
   {
     name: "today",
     description: "Get today's daily leetcode problem",
-    runSlash: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       let question: Question;
       try {
         const { data, errors } = await fetchDaily();
@@ -430,9 +408,6 @@ Here are available Server commands:
         await interaction.reply({ content: "Something went wrong" });
       }
     },
-    runMessage: async ({ interaction }) => {
-
-    },
   },
   {
     name: "random",
@@ -466,7 +441,7 @@ Here are available Server commands:
         })),
       },
     ],
-    runSlash: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       try {
         const filters: QuestionFilter = {
           difficulty: interaction.options.getString("difficulty") ?? undefined,
@@ -478,60 +453,6 @@ Here are available Server commands:
             .map((t) => t.trim())
             .filter((t) => t.length > 0),
         };
-
-        const { data, errors } = await fetchRandom(filters);
-        if (errors) {
-          await interaction.reply({ content: "Question not found." });
-          return;
-        }
-        const question = data.randomQuestion;
-
-        await interaction.reply(await createEmbed(question));
-      } catch (e) {
-        console.error(e);
-        if (e instanceof Error) {
-          await interaction.reply(e.message);
-          return;
-        }
-        await interaction.reply("Something went wrong");
-      }
-    },
-    runMessage: async ({ interaction, args }) => {
-      try {
-        const filters: QuestionFilter = {};
-        const index = args.findIndex((arg) => arg.includes("="));
-        if (index !== -1) {
-          const difficulty = args[index].toUpperCase();
-          if (
-            !(
-              difficulty === "EASY" ||
-              difficulty === "MEDIUM" ||
-              difficulty === "HARD" ||
-              difficulty === undefined
-            )
-          ) {
-            await interaction.reply({
-              content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`.",
-            });
-            return;
-          }
-        }
-        args?.forEach((arg) => {
-          let [key, value] = arg.split("=");
-          if (key === "diff") {
-            filters["difficulty"] = value.toUpperCase();
-          }
-          if (key === "list") {
-            filters["listId"] = value.toLowerCase();
-          }
-          if (key === "tags") {
-            filters[key] = value
-              ?.toLowerCase()
-              .split(",")
-              .map((t) => t.trim())
-              .filter((t) => t.length > 0);
-          }
-        });
 
         const { data, errors } = await fetchRandom(filters);
         if (errors) {
@@ -589,7 +510,7 @@ Here are available Server commands:
         })),
       },
     ],
-    runSlash: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       try {
         const name = interaction.options.getString("name")!;
         const filters: QuestionFilter = {
@@ -608,69 +529,6 @@ Here are available Server commands:
           return;
         }
         const question = data.problemsetQuestionList.questions[0];
-
-        await interaction.reply(await createEmbed(question));
-      } catch (e) {
-        console.error(e);
-        if (e instanceof Error) {
-          await interaction.reply(e.message);
-          return;
-        }
-        await interaction.reply("Something went wrong");
-      }
-    },
-    runMessage: async ({ interaction, args }) => {
-      try {
-        if (args.length === 0) {
-          await interaction.reply("Please provide a name");
-          return;
-        }
-
-        const index = args.findIndex((arg) => arg.includes("="));
-        if (index !== -1) {
-          const difficulty = args[index].toUpperCase();
-          if (
-            !(
-              difficulty === "EASY" ||
-              difficulty === "MEDIUM" ||
-              difficulty === "HARD" ||
-              difficulty === undefined
-            )
-          ) {
-            await interaction.reply({
-              content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`.",
-            });
-            return;
-          }
-        }
-        const filters: QuestionFilter = {};
-        args?.forEach((arg) => {
-          let [key, value] = arg.split("=");
-          if (key === "diff") {
-            filters["difficulty"] = value.toUpperCase();
-          }
-          if (key === "list") {
-            filters["listId"] = value.toLowerCase();
-          }
-          if (key === "tags") {
-            filters[key] = value
-              ?.toLowerCase()
-              .split(",")
-              .map((t) => t.trim())
-              .filter((t) => t.length > 0);
-          }
-        });
-        const name = args
-          .filter((arg) => !arg.includes("="))
-          .join(" ")
-          .toLowerCase();
-        const { data, errors } = await fetchQuestion(name);
-        if (errors) {
-          await interaction.reply({ content: "Question not found." });
-          return;
-        }
-
-        const question = data.question;
 
         await interaction.reply(await createEmbed(question));
       } catch (e) {
@@ -721,7 +579,7 @@ Here are available Server commands:
         })),
       },
     ],
-    runSlash: async ({ interaction }) => {
+    run: async ({ interaction }) => {
       try {
         let name = interaction.options.getString("name")!;
         const filters: QuestionFilter = {
@@ -775,99 +633,6 @@ Here are available Server commands:
 
         collector.on("end", () => {
           interaction.editReply({ components: [] });
-        });
-      } catch (e) {
-        console.error(e);
-        if (e instanceof Error) {
-          await interaction.reply(e.message);
-          return;
-        }
-        await interaction.reply("Something went wrong");
-      }
-    },
-    runMessage: async ({ interaction, args }) => {
-      try {
-        if (args.length === 0) {
-          await interaction.reply("Please provide a name");
-          return;
-        }
-        const filters: QuestionFilter = {};
-        const index = args.findIndex((arg) => arg.includes("="));
-        if (index !== -1) {
-          const difficulty = args[index].toUpperCase();
-          if (
-            !(
-              difficulty === "EASY" ||
-              difficulty === "MEDIUM" ||
-              difficulty === "HARD" ||
-              difficulty === undefined
-            )
-          ) {
-            await interaction.reply({
-              content: "Difficulty should be `EASY`, `MEDIUM` or `HARD`.",
-            });
-            return;
-          }
-        }
-        args?.forEach((arg) => {
-          let [key, value] = arg.split("=");
-          if (key === "diff") {
-            filters["difficulty"] = value.toUpperCase();
-          }
-          if (key === "list") {
-            filters["listId"] = value.toLowerCase();
-          }
-          if (key === "tags") {
-            filters[key] = value
-              ?.toLowerCase()
-              .split(",")
-              .map((t) => t.trim())
-              .filter((t) => t.length > 0);
-          }
-        });
-
-        const name = args
-          .filter((arg) => !arg.includes("="))
-          .join(" ")
-          .toLowerCase();
-        let page = 0;
-
-        const { data, errors } = await searchQuestion(name, filters, page);
-        if (errors) {
-          await interaction.reply({ content: "Question not found." });
-          return;
-        }
-        const questions = data.problemsetQuestionList.questions;
-
-        const maxPage = Math.ceil(data.problemsetQuestionList.total / 10);
-        const message = await interaction.reply({
-          content: `page ${page + 1}/${maxPage}`,
-          ...(await createSearchEmbed(questions, page)),
-        });
-
-        const collector = interaction.channel!.createMessageComponentCollector({
-          filter: (i) => i.customId === "prev" || i.customId === "next",
-          time: 15000,
-        });
-
-        collector.on("collect", async (i) => {
-          page = i.customId === "next" ? page + 1 : page - 1;
-          page = Math.max(0, Math.min(page, maxPage - 1));
-
-          const { data, errors } = await searchQuestion(name, filters, page);
-          if (errors) {
-            await interaction.reply({ content: "Something went wrong" });
-            return;
-          }
-          const questions = data.problemsetQuestionList.questions;
-          await i.update({
-            content: `page ${page + 1}/${maxPage}`,
-            ...(await createSearchEmbed(questions, page)),
-          });
-        });
-
-        collector.on("end", () => {
-          message.edit({ components: [] });
         });
       } catch (e) {
         console.error(e);

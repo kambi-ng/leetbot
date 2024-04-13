@@ -55,45 +55,12 @@ async function main() {
     console.log(`LeetBot has been logged in as ${username} (${tag})!`);
   });
 
-  client.on("messageCreate", async (interaction) => {
-    if (
-      !interaction.content.startsWith("l!") ||
-      interaction.author.bot ||
-      interaction.author.id === interaction.client.user?.id
-    )
-      return;
-    const [commandName, ...args] =
-      interaction.content
-        .trim()
-        .slice(2)
-        .match(/"[^"]+"|[^\s]+/g)
-        ?.map((e) => e.replace(/"(.+)"/, "$1")) ?? [];
-    const command = commands.find((c) => c.name === commandName);
-
-    if (!command) {
-      interaction.reply(
-        "Sorry, I don't quite understand. Do you need `l!help` or `/help`?",
-      );
-      return;
-    }
-
-    if ("run" in command!) {
-      await command.run({ interaction, client, args });
-    } else {
-      await command?.runMessage({ interaction, client, args });
-    }
-  });
-
   client.on("interactionCreate", async (interaction) => {
     if (interaction instanceof ChatInputCommandInteraction) {
       const command = commands.find((c) => c.name === interaction.commandName)!;
 
       try {
-        if ("run" in command!) {
-          await command.run({ interaction, client });
-        } else {
-          await command?.runSlash({ interaction, client });
-        }
+        await command?.run({ interaction, client });
       } catch (e) {
         console.error(e);
       }
