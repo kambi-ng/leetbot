@@ -12,7 +12,7 @@ import {
   PermissionResolvable,
   ChannelType,
 } from "discord.js";
-import type { Channel, ColorResolvable } from "discord.js";
+import type { ColorResolvable } from "discord.js";
 import { Mutex, MutexInterface } from "async-mutex";
 import { z } from "zod";
 import { readFile, writeFile } from "node:fs/promises";
@@ -235,7 +235,8 @@ export const commands: Command[] = [
 **LEETBOT**
 Here are available Server commands:
 - \`/help\` Display this message
-- \`/config\` [time] [channelid] [command] Configure the daily question, only serevr member with \`MANAGE_CHANNEL\` permission can use this command.
+- \`/setting\` [time] [channelid] [command] Configure the daily question, only serevr member with \`MANAGE_CHANNEL\` permission can use this command.
+- \`/getsetting\` get server setting for daily question, only serevr member with \`MANAGE_CHANNEL\` permission can use this command.
 - \`/today\` Get today's daily leetcode problem
 - \`/random\` [difficulty] [tags] [list] Get random leetcode problem
 - \`/search\` [name] [difficulty] [tags] [list] Search leetcode question
@@ -261,8 +262,8 @@ Here are available Server commands:
     },
   },
   {
-    name: "config",
-    description: "Configure leetbot",
+    name: "setting",
+    description: "Setup leetbot for daily question",
     defaultMemberPermissions: ["ManageChannels"],
     options: [
       {
@@ -352,8 +353,8 @@ Here are available Server commands:
     },
   },
   {
-    name: "settings",
-    description: "Get leetbot configuration",
+    name: "getsettings",
+    description: "Get leetbot settings",
     defaultMemberPermissions: ["ManageChannels"],
     run: async ({ interaction }) => {
       if (!interaction.memberPermissions?.has("ManageChannels")) {
