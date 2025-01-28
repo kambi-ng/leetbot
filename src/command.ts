@@ -10,8 +10,9 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionResolvable,
+  ChannelType,
 } from "discord.js";
-import type { ColorResolvable } from "discord.js";
+import type { Channel, ColorResolvable } from "discord.js";
 import { Mutex, MutexInterface } from "async-mutex";
 import { z } from "zod";
 import { readFile, writeFile } from "node:fs/promises";
@@ -272,7 +273,7 @@ Here are available Server commands:
       },
       {
         name: "channelid",
-        description: "channel id to send the question",
+        description: "channel id, name, or \"this\" to send the question",
         type: ApplicationCommandOptionType.String,
         required: true,
       },
@@ -296,7 +297,7 @@ Here are available Server commands:
       }
 
       const time = interaction.options.getString("time")!;
-      const channelId = interaction.options.getString("channelid")!;
+      let channelId = interaction.options.getString("channelid")!;
       const command = interaction.options.getString("command")!;
 
       // validate if the time is in 24h format
@@ -309,12 +310,25 @@ Here are available Server commands:
         return;
       }
 
-      if (!client.channels.cache.has(channelId)) {
-        await interaction.reply({
-          content: "Invalid channel id.",
-          ephemeral: true,
+      if (channelId === "this") {
+        channelId = interaction.channelId;
+      } else if (!client.channels.cache.has(channelId)) {
+        const channelName = channelId;
+
+        const channel = client.channels.cache.find((c) => {
+          if (c.type !== ChannelType.GuildText) return false;
+          return c.name === channelName;
         });
-        return;
+
+        if (!channel) {
+          await interaction.reply({
+            content: "Invalid channel",
+            ephemeral: true,
+          });
+          return;
+        }
+
+        channelId = channel.id;
       }
 
       const config: Config = {
@@ -350,7 +364,7 @@ Here are available Server commands:
       }
 
       const data = await configManager.getConfig(interaction.guildId!);
-      if (!data) {
+      if (!data || !data.config) {
         await interaction.reply("No configuration found.");
         return;
       }
@@ -360,7 +374,7 @@ Here are available Server commands:
       const embed = new EmbedBuilder()
         .setTitle("Configuration")
         .setDescription(
-          `Channel: <#${config.channelId}>\nTime: ${config.time}\nCommand: ${config.command}`,
+          `Channel: <#${config?.channelId}>\nTime: ${config?.time}\nCommand: ${config?.command}`,
         );
 
       await interaction.reply({ embeds: [embed], ephemeral: true });

@@ -118,7 +118,7 @@ function worker() {
               }
 
               await message.startThread({
-                name: question.title,
+                name: `${question.questionId}. ${question.title}`,
                 autoArchiveDuration: 60 * 24 * 3, // 3 days
               });
             } catch (e) {
