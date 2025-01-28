@@ -394,7 +394,7 @@ Here are available Server commands:
         collector.on("collect", async (i) => {
           await i.deferUpdate();
           await i.message.startThread({
-            name: question.title,
+            name: `${question.questionId}. ${question.title}`,
             autoArchiveDuration: 60 * 24 * 3, // 3 days
           });
         });
@@ -480,7 +480,7 @@ Here are available Server commands:
         collector.on("collect", async (i) => {
           await i.deferUpdate();
           await i.message.startThread({
-            name: question.title,
+            name: `${question.questionId}. ${question.title}`,
             autoArchiveDuration: 60 * 24 * 3, // 3 days
           });
         });
