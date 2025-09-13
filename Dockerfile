@@ -8,7 +8,7 @@ RUN npm install -g pnpm
 RUN pnpm install
 
 COPY src src
-COPY .env .env
+# COPY .env .env
 COPY tsconfig.json tsconfig.json
 RUN pnpm build
 
