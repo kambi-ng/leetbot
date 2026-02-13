@@ -104,16 +104,19 @@ function worker() {
           if (record.command == "today") {
             let question: Question;
             try {
-              const { data, errors } = await fetchDaily();
-              if (errors) {
+              const { data } = await fetchDaily();
+              if (!data) {
                 await channel.send({ content: "Question not found." });
                 return;
               }
               question = data.activeDailyCodingChallengeQuestion.question;
-              const embed = await createEmbed(question);
+              const { reply } = await createEmbed(question);
 
-              const message = await channel.send(embed);
-              if ("content" in embed) {
+              const message = await channel.send({
+                embeds: reply.embeds,
+                components: reply.components,
+              });
+              if ("content" in reply) {
                 return;
               }
 

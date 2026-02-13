@@ -11,6 +11,8 @@ import {
   ButtonStyle,
   PermissionResolvable,
   ChannelType,
+  type InteractionReplyOptions,
+  PermissionsBitField,
 } from "discord.js";
 import type { ColorResolvable } from "discord.js";
 import { Mutex, MutexInterface } from "async-mutex";
@@ -59,6 +61,7 @@ import TurndownService from "turndown";
 import { client, getSettingsPath } from ".";
 
 const configSchema = z.record(
+  z.string(),
   z.object({
     channelId: z.string(),
     time: z.string(),
@@ -66,7 +69,11 @@ const configSchema = z.record(
   }),
 );
 
-type Config = z.infer<typeof configSchema>["guildId"];
+type Config = {
+  channelId: string;
+  time: string;
+  command: string;
+};
 
 class ConfigManager {
   mutex: Mutex;
@@ -86,9 +93,13 @@ class ConfigManager {
       settingsPath,
       "utf-8",
     );
-    //@ts-ignore
-    if (readErr && readErr.code !== "ENOENT") {
+    if (readErr && (readErr as NodeJS.ErrnoException).code !== "ENOENT") {
       console.error(readErr);
+      return undefined;
+    }
+
+    if (readErr && (readErr as NodeJS.ErrnoException).code === "ENOENT") {
+      // file doesn't exist yet
       return undefined;
     }
 
@@ -128,14 +139,17 @@ class ConfigManager {
       settingsPath,
       "utf-8",
     );
-    //@ts-ignore
-    if (readErr && readErr.code !== "ENOENT") {
+    if (readErr && (readErr as NodeJS.ErrnoException).code !== "ENOENT") {
       console.error(readErr);
       return undefined;
     }
 
+    if (readErr && (readErr as NodeJS.ErrnoException).code === "ENOENT") {
+      return { release, configs: {} as Record<string, Config> };
+    }
+
     if (rawSettings === undefined) {
-      return undefined;
+      return { release, configs: {} as Record<string, Config> };
     }
 
     // i know this is stupid, but i'm too lazy to fix it
@@ -153,7 +167,7 @@ class ConfigManager {
       return undefined;
     }
 
-    const configs = settings.data;
+    const configs = settings.data as Record<string, Config>;
 
     return { release, configs };
   }
@@ -166,17 +180,20 @@ class ConfigManager {
         settingsPath,
         "utf-8",
       );
-      //@ts-ignore
-      if (readErr && readErr.code !== "ENOENT") {
+      // If there's a non-ENOENT error reading, bail
+      if (readErr && (readErr as NodeJS.ErrnoException).code !== "ENOENT") {
         console.error(readErr);
         return readErr;
-      } else {
+      }
+      // If file doesn't exist, start from empty object
+      if (readErr && (readErr as NodeJS.ErrnoException).code === "ENOENT") {
         rawSettings = "{}";
       }
+
       // i know this is stupid, but i'm too lazy to fix it
       let [err, unverifiedSettings] = tryCatch(
         JSON.parse,
-        rawSettings as string,
+        (rawSettings as string | undefined) ?? "{}",
       );
       if (err) {
         console.error(err);
@@ -193,9 +210,10 @@ class ConfigManager {
         return settings.error;
       }
 
-      settings.data[guildId] = config;
+      const data = settings.data as Record<string, Config>;
+      data[guildId] = config;
 
-      await writeFile(settingsPath, JSON.stringify(settings.data, null, 2));
+      await writeFile(settingsPath, JSON.stringify(data, null, 2));
     });
   }
 }
@@ -264,7 +282,7 @@ Here are available Server commands:
   {
     name: "setting",
     description: "Setup leetbot for daily question",
-    defaultMemberPermissions: ["ManageChannels"],
+    defaultMemberPermissions: PermissionsBitField.Flags.ManageChannels,
     options: [
       {
         name: "time",
@@ -274,7 +292,7 @@ Here are available Server commands:
       },
       {
         name: "channelid",
-        description: "channel id, name, or \"this\" to send the question",
+        description: 'channel id, name, or "this" to send the question',
         type: ApplicationCommandOptionType.String,
         required: true,
       },
@@ -290,10 +308,11 @@ Here are available Server commands:
       },
     ],
     run: async ({ interaction }) => {
-      if (!interaction.memberPermissions?.has("ManageChannels")) {
-        await interaction.reply(
-          "You do not have permission to use this command.",
-        );
+      if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels)) {
+        await interaction.reply({
+          content: "You do not have permission to use this command.",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -355,9 +374,9 @@ Here are available Server commands:
   {
     name: "getsettings",
     description: "Get leetbot settings",
-    defaultMemberPermissions: ["ManageChannels"],
+    defaultMemberPermissions: PermissionsBitField.Flags.ManageChannels,
     run: async ({ interaction }) => {
-      if (!interaction.memberPermissions?.has("ManageChannels")) {
+      if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels)) {
         await interaction.reply(
           "You do not have permission to use this command.",
         );
@@ -386,18 +405,17 @@ Here are available Server commands:
     name: "today",
     description: "Get today's daily leetcode problem",
     run: async ({ interaction }) => {
-      let question: Question;
       try {
-        const { data, errors } = await fetchDaily();
-        if (errors) {
+        const { data } = await fetchDaily();
+        if (!data) {
           await interaction.reply({ content: "Question not found." });
           return;
         }
-        question = data.activeDailyCodingChallengeQuestion.question;
-        const embed = await createEmbed(question);
-        await interaction.reply(embed);
+        const question = data.activeDailyCodingChallengeQuestion.question;
+        const { reply, editedComponents } = await createEmbed(question);
+        await interaction.reply(reply);
 
-        if ("content" in embed) {
+        if (!editedComponents) {
           return;
         }
 
@@ -416,7 +434,7 @@ Here are available Server commands:
 
         collector.on("end", async (collected) => {
           console.log(`Collected ${collected.size} threads`);
-          interaction.editReply({ components: embed.editedComponents });
+          await interaction.editReply({ components: editedComponents });
         });
       } catch (e) {
         console.error(e);
@@ -473,17 +491,17 @@ Here are available Server commands:
             .filter((t) => t.length > 0),
         };
 
-        const { data, errors } = await fetchRandom(filters);
-        if (errors) {
+        const { data } = await fetchRandom(filters);
+        if (!data) {
           await interaction.reply({ content: "Question not found." });
           return;
         }
         const question = data.randomQuestion;
 
-        const embed = await createEmbed(question);
-        await interaction.reply(embed);
+        const { reply, editedComponents } = await createEmbed(question);
+        await interaction.reply(reply);
 
-        if ("content" in embed) {
+        if (!editedComponents) {
           return;
         }
 
@@ -502,7 +520,7 @@ Here are available Server commands:
 
         collector.on("end", async (collected) => {
           console.log(`Collected ${collected.size} threads`);
-          interaction.editReply({ components: embed.editedComponents });
+          await interaction.editReply({ components: editedComponents });
         });
       } catch (e) {
         console.error(e);
@@ -565,14 +583,15 @@ Here are available Server commands:
             .map((t) => t.trim())
             .filter((t) => t.length > 0),
         };
-        const { data, errors } = await searchQuestion(name, filters);
-        if (errors) {
+        const { data } = await searchQuestion(name, filters);
+        if (!data) {
           await interaction.reply({ content: "Question not found." });
           return;
         }
         const question = data.problemsetQuestionList.questions[0];
 
-        await interaction.reply(await createEmbed(question));
+        const { reply } = await createEmbed(question);
+        await interaction.reply(reply);
       } catch (e) {
         console.error(e);
         if (e instanceof Error) {
@@ -638,8 +657,8 @@ Here are available Server commands:
         };
         let page = 0;
 
-        const { data, errors } = await searchQuestion(name, filters, page);
-        if (errors) {
+        const { data } = await searchQuestion(name, filters, page);
+        if (!data) {
           await interaction.reply({ content: "Question not found." });
           return;
         }
@@ -661,15 +680,17 @@ Here are available Server commands:
           page = i.customId === "next" ? page + 1 : page - 1;
           page = Math.max(0, Math.min(page, maxPage - 1));
 
-          const { data, errors } = await searchQuestion(name, filters, page);
-          if (errors) {
+          const { data } = await searchQuestion(name, filters, page);
+          if (!data) {
             await interaction.reply({ content: "Something went wrong" });
             return;
           }
           const questions = data.problemsetQuestionList.questions;
+          const searchEmbed = await createSearchEmbed(questions, page);
           await i.update({
             content: `page ${page + 1}/${maxPage}`,
-            ...(await createSearchEmbed(questions, page)),
+            embeds: searchEmbed.embeds,
+            components: searchEmbed.components,
           });
         });
 
@@ -688,7 +709,9 @@ Here are available Server commands:
   },
 ];
 
-export async function createEmbed(question: Question) {
+export async function createEmbed(
+  question: Question,
+): Promise<{ reply: InteractionReplyOptions; editedComponents?: ActionRowBuilder<ButtonBuilder>[] }> {
   const colors: { [key: string]: ColorResolvable } = {
     Easy: "#40b46f",
     Medium: "#ffc528",
@@ -747,18 +770,25 @@ export async function createEmbed(question: Question) {
       .addComponents(editedView)
       .addComponents(threadDisable);
 
-    return {
+    const reply: InteractionReplyOptions = {
       embeds: [embed],
       components: [row],
+    };
+
+    return {
+      reply,
       editedComponents: [editedRow],
     };
   } catch (e) {
     console.error(e);
-    return { content: "Something went wrong" };
+    return { reply: { content: "Something went wrong" } };
   }
 }
 
-async function createSearchEmbed(questions: Question[], page: number) {
+async function createSearchEmbed(
+  questions: Question[],
+  page: number,
+): Promise<InteractionReplyOptions> {
   try {
     const embed = new EmbedBuilder()
       .setTitle("Search result")

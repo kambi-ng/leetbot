@@ -1,9 +1,9 @@
-import { gql } from "@apollo/client/core";
+import { gql, HttpLink } from "@apollo/client/core";
 import { ApolloClient, InMemoryCache } from "@apollo/client/core";
 import "cross-fetch/polyfill";
 
 export const client = new ApolloClient({
-  uri: "https://leetcode.com/graphql/",
+  link: new HttpLink({ uri: "https://leetcode.com/graphql/" }),
   defaultOptions: {
     watchQuery: {
       fetchPolicy: "no-cache",
